@@ -1,0 +1,40 @@
+project: lgdnet-lca-eq
+seed: 42
+
+data:
+  train_manifest: data/manifests/train.csv
+  val_manifest: data/manifests/val.csv
+  test_manifest: data/manifests/test.csv
+  image_size: 512
+  num_land_classes: 7
+
+model:
+  name: LGDNet
+  backbone_channels: [64, 128, 256]
+  decoder_channels: 128
+  use_lsgm: true
+  host_class_ids: [0, 1, 2]
+  non_host_class_ids: [3, 4, 5, 6]
+
+loss:
+  damage_weight: 1.0
+  land_weight: 0.5
+  aux_weight: 0.3
+  damage_class_weights: [1.0, 50.0]
+
+optimizer:
+  name: AdamW
+  backbone_lr: 0.0001
+  head_lr: 0.001
+  weight_decay: 0.01
+
+scheduler:
+  name: cosine
+  min_lr: 0.000001
+
+train:
+  epochs: 100
+  batch_size: 16
+  patience: 15
+  num_workers: 4
+  output_dir: outputs/lgdnet_lca_eq

@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: "LGDNet: Land-Guided Damage Network"
+message: "If you use this repository, please cite the original paper and this software."
+type: software
+authors:
+  - family-names: Xiao
+    given-names: Zhentong
+  - family-names: He
+    given-names: Wei
+  - family-names: Wang
+    given-names: Haifeng
+  - family-names: Yang
+    given-names: Guangyi
+license: MIT
+repository-code: "https://github.com/xzt11/lgdnet-lca-eq"
+abstract: "PyTorch implementation scaffold for land-cover-conditioned earthquake damage assessment with LGDNet and LSGM."
+keywords:
+  - earthquake damage assessment
+  - semantic segmentation
+  - remote sensing
+  - very-high-resolution imagery
+  - PyTorch
