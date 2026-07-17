@@ -1,4 +1,4 @@
-"""Minimal LGDNet training entrypoint."""
+"""LGDNet training entrypoint for the manuscript configuration."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from lgdnet.models import LGDNet
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train LGDNet on LCA-EQ-style manifests.")
+    parser = argparse.ArgumentParser(description="Train LGDNet on LCA-EQ manifests.")
     parser.add_argument("--config", default="configs/lgdnet_lca_eq.yaml")
     return parser.parse_args()
 
@@ -25,7 +25,11 @@ def main() -> None:
     config = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_data = LCAEQDataset(config["data"]["train_manifest"], root=".")
+    train_data = LCAEQDataset(
+        config["data"]["train_manifest"],
+        root=".",
+        image_size=config["data"]["image_size"],
+    )
     train_loader = DataLoader(
         train_data,
         batch_size=config["train"]["batch_size"],
@@ -38,14 +42,13 @@ def main() -> None:
         num_land_classes=config["data"]["num_land_classes"],
         decoder_channels=config["model"]["decoder_channels"],
         use_lsgm=config["model"]["use_lsgm"],
-        host_class_ids=tuple(config["model"]["host_class_ids"]),
-        non_host_class_ids=tuple(config["model"]["non_host_class_ids"]),
+        support_class_ids=tuple(config["model"]["support_class_ids"]),
+        non_support_class_ids=tuple(config["model"]["non_support_class_ids"]),
     ).to(device)
 
     criterion = LGDNetLoss(
         damage_weight=config["loss"]["damage_weight"],
         land_weight=config["loss"]["land_weight"],
-        aux_weight=config["loss"]["aux_weight"],
         damage_class_weights=config["loss"]["damage_class_weights"],
         num_land_classes=config["data"]["num_land_classes"],
     )
