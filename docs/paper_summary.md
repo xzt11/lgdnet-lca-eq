@@ -34,14 +34,30 @@ LGDNet contains:
 
 - shared image encoder
 - semantic head for land-cover probabilities
-- damage head for damage features
+- damage branch for visible-damage prediction
 - Land-Semantics Gating Module (LSGM)
 
 LSGM aggregates predicted land-cover probabilities into support and non-support probabilities, builds semantic guidance for damage features, and applies soft promotion and suppression to the damage stream.
 
 ## Training Objective
 
-The manuscript uses supervised land-cover and damage losses. Damage prediction is the primary target task, while land-cover prediction provides semantic guidance for damage inference.
+The manuscript uses supervised land-cover and damage losses:
+
+```text
+L_total = 1.0 * L_damage + 0.5 * L_land
+```
+
+No auxiliary damage loss is used in the manuscript configuration.
+
+## Training Configuration
+
+The manuscript-aligned default configuration uses:
+
+- PyTorch 2.7.1
+- 384 x 384 random crops
+- 30 training epochs
+- AdamW optimizer
+- event-level train/validation/test split
 
 ## Reported Paper Result
 
@@ -52,5 +68,3 @@ Under event-level evaluation against twelve representative segmentation baseline
 - Damage IoU improvement over the strongest baseline: 6.91 percentage points
 
 Ablation and error analyses show that land-cover guidance reduces false damage responses on visually similar undamaged surfaces.
-
-This repository provides an implementation scaffold rather than the original full training release.
