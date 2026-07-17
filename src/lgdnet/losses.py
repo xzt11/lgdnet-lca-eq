@@ -34,20 +34,18 @@ class CombinedSegmentationLoss(nn.Module):
 
 
 class LGDNetLoss(nn.Module):
-    """Composite LGDNet objective."""
+    """Two-task LGDNet objective used in the manuscript."""
 
     def __init__(
         self,
         damage_weight: float = 1.0,
         land_weight: float = 0.5,
-        aux_weight: float = 0.3,
         damage_class_weights: list[float] | None = None,
         num_land_classes: int = 7,
     ) -> None:
         super().__init__()
         self.damage_weight = damage_weight
         self.land_weight = land_weight
-        self.aux_weight = aux_weight
         self.land_loss = CombinedSegmentationLoss(num_land_classes)
         self.damage_loss = CombinedSegmentationLoss(2, damage_class_weights or [1.0, 50.0])
 
@@ -59,6 +57,5 @@ class LGDNetLoss(nn.Module):
     ) -> dict[str, torch.Tensor]:
         land = self.land_loss(outputs["land_logits"], land_mask)
         damage = self.damage_loss(outputs["damage_logits"], damage_mask)
-        aux = self.damage_loss(outputs["aux_damage_logits"], damage_mask)
-        total = self.damage_weight * damage + self.land_weight * land + self.aux_weight * aux
-        return {"total": total, "land": land, "damage": damage, "aux": aux}
+        total = self.damage_weight * damage + self.land_weight * land
+        return {"total": total, "land": land, "damage": damage}
