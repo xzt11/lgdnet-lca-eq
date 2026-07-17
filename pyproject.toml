@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lgdnet-lca-eq"
 version = "0.1.0"
-description = "Land-cover-conditioned earthquake damage assessment with LGDNet."
+description = "Land-cover-conditioned post-earthquake damage mapping with LGDNet."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
   { name = "LGDNet contributors" }
@@ -16,8 +16,8 @@ dependencies = [
   "numpy>=1.23",
   "pillow>=9.0",
   "pyyaml>=6.0",
-  "torch>=2.0",
-  "torchvision>=0.15"
+  "torch>=2.7.1",
+  "torchvision>=0.22"
 ]
 
 [project.optional-dependencies]
@@ -31,4 +31,4 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
