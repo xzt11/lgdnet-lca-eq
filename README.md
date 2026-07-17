@@ -1,6 +1,6 @@
 # LGDNet: Land-Guided Damage Network
 
-Open-source PyTorch implementation scaffold for **land-cover-conditioned post-earthquake damage mapping** from very-high-resolution (VHR) post-event RGB imagery.
+Official PyTorch implementation and release index for **land-cover-conditioned post-earthquake damage mapping** from single-temporal very-high-resolution (VHR) post-event RGB imagery.
 
 This repository accompanies the paper:
 
@@ -11,26 +11,27 @@ The paper introduces the **Land-Cover Anchored Earthquake (LCA-EQ)** benchmark a
 - a seven-class land-cover layer: `Building`, `Road`, `Impervious Surface`, `Forest`, `Farmland`, `Water`, `Other`
 - an independent binary visible-damage layer
 
-The key formulation is that visible damage is treated as a **state associated with an underlying land-cover class**, rather than as an eighth mutually exclusive land-cover category. LGDNet uses predicted land-cover probabilities as soft semantic guidance through the **Land-Semantics Gating Module (LSGM)**, promoting damage-related features on plausible built-environment support surfaces and suppressing damage-like responses on non-support surfaces.
+Visible damage is treated as a **state associated with an underlying land-cover class**, rather than as an eighth mutually exclusive land-cover category. LGDNet uses predicted land-cover probabilities as soft semantic guidance through the **Land-Semantics Gating Module (LSGM)**, promoting damage-related features on plausible built-environment support surfaces and suppressing damage-like responses on non-support surfaces.
 
-## Repository Status
+## Repository Contents
 
-This repository is a clean open-source project scaffold for reproducibility and further development. It includes:
+This repository provides:
 
-- LGDNet model components
-- LSGM implementation
-- dataset manifest loader
-- training configuration template
-- metric utilities
-- paper-derived method notes
+- LGDNet and LSGM implementation
+- manifest-based LCA-EQ data loader
+- manuscript-aligned training configuration
+- loss and metric utilities
+- event-level split files and event metadata
+- data-release structure for derived LCA-EQ research assets
+- method and data documentation
 
-The original VHR image tiles used to construct LCA-EQ are **not redistributed** because they are governed by third-party imagery licence terms. The releasable research assets are intended to include labels, AOI footprints, acquisition-time metadata, patch indices, event-level split files, preprocessing scripts, evaluation scripts, and model code.
+The original VHR image tiles are **not redistributed** because they are governed by third-party imagery licence terms. Reproducibility is supported through releasable derived assets, including land-cover labels, visible-damage annotations, AOI footprints, acquisition metadata, crop grids, split files, preprocessing/evaluation scripts, configuration files, and model code. Users must obtain lawful access to the corresponding source imagery to reconstruct the exact image inputs.
 
 ## LCA-EQ Data Summary
 
 LCA-EQ contains **6,683 annotated $1024 \times 1024$ image patches** extracted from post-event VHR RGB imagery at an approximate ground sampling distance of **0.3--0.5 m**. The benchmark covers eight earthquake events between 2018 and 2025. Each image patch is paired with spatially aligned land-cover and visible-damage labels.
 
-The benchmark uses an event-level split to evaluate cross-event generalization. All patches from the same earthquake event are assigned to the same subset.
+The benchmark uses an event-level split to evaluate cross-event generalization. All patches from the same earthquake event are assigned to the same subset. The split metadata is provided under `data/lca_eq/splits/`.
 
 ## Installation
 
@@ -47,6 +48,8 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 ```
+
+The manuscript experiments use PyTorch 2.7.1. The package metadata requires `torch>=2.7.1`.
 
 ## Data Format
 
@@ -83,28 +86,47 @@ import torch
 from lgdnet.models import LGDNet
 
 model = LGDNet(num_land_classes=7)
-x = torch.randn(2, 3, 512, 512)
+x = torch.randn(2, 3, 384, 384)
 out = model(x)
 
 print(out["land_logits"].shape)
 print(out["damage_logits"].shape)
 ```
 
-## Training
+## Training Configuration
 
-The scaffold configuration follows the paper setting with PyTorch, AdamW, event-level data splits, random crops, cosine annealing, and a combined damage and land-cover objective. See:
+The manuscript-aligned configuration is:
 
 ```bash
 configs/lgdnet_lca_eq.yaml
 ```
 
-Damage supervision uses positive weighting because damaged pixels are sparse.
+Key settings:
+
+- PyTorch: 2.7.1
+- random crop size: 384 x 384
+- epochs: 30
+- optimizer: AdamW
+- objective: `1.0 * L_damage + 0.5 * L_land`
+- no auxiliary damage loss is used in the manuscript configuration
+
+Run training after preparing the manifests and masks:
+
+```bash
+python scripts/train.py --config configs/lgdnet_lca_eq.yaml
+```
 
 ## Project Layout
 
 ```text
 .
 ├── configs/
+├── data/lca_eq/
+│   ├── metadata/
+│   ├── splits/
+│   ├── crop_grids/
+│   ├── aoi_footprints/
+│   └── labels/
 ├── docs/
 ├── scripts/
 ├── src/lgdnet/
