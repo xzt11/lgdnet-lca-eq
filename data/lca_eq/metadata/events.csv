@@ -1,0 +1,9 @@
+event,subset,date,country,dominant_setting,patches,notes
+Noto Peninsula 2024,train,2024-01,Japan,Urban,3107,
+Turkiye-Syria 2023,train,2023-02,Turkiye and Syria,Urban,1760,
+Mandalay 2025,train,2025-03,Myanmar,Rural,178,
+Southwest Puerto Rico 2020,train,2020-01,USA,Urban,445,"Selected AOIs contain no positive visible-damage labels and provide hard negative context."
+Yangbi 2021,validation,2021-05,China,Rural,183,
+Nippes 2021,validation,2021-08,Haiti,Urban,170,
+Al Haouz 2023,test,2023-09,Morocco,Rural,587,
+Sulawesi 2018,test,2018-09,Indonesia,Urban,253,
