@@ -26,23 +26,24 @@ class ConvBlock(nn.Module):
 
 
 class LGDNet(nn.Module):
-    """Dual-head segmentation network with land-semantics gating.
-
-    This compact implementation is designed as a reproducible baseline scaffold.
-    It preserves the paper's key interface and coupling mechanism while keeping
-    the encoder-decoder simple enough for open-source extension.
-    """
+    """Dual-head segmentation network with land-semantics gating."""
 
     def __init__(
         self,
         num_land_classes: int = 7,
         decoder_channels: int = 128,
         use_lsgm: bool = True,
-        host_class_ids: tuple[int, ...] = (0, 1, 2),
-        non_host_class_ids: tuple[int, ...] = (3, 4, 5, 6),
+        support_class_ids: tuple[int, ...] = (0, 1, 2),
+        non_support_class_ids: tuple[int, ...] = (3, 4, 5, 6),
+        host_class_ids: tuple[int, ...] | None = None,
+        non_host_class_ids: tuple[int, ...] | None = None,
     ) -> None:
         super().__init__()
         self.use_lsgm = use_lsgm
+        if host_class_ids is not None:
+            support_class_ids = host_class_ids
+        if non_host_class_ids is not None:
+            non_support_class_ids = non_host_class_ids
 
         self.stem = ConvBlock(3, 64)
         self.enc2 = ConvBlock(64, 128, stride=2)
@@ -57,12 +58,11 @@ class LGDNet(nn.Module):
         self.fuse = ConvBlock(decoder_channels, decoder_channels)
         self.semantic_head = nn.Conv2d(decoder_channels, num_land_classes, kernel_size=1)
         self.damage_feature_head = ConvBlock(decoder_channels, decoder_channels)
-        self.aux_damage_head = nn.Conv2d(decoder_channels, 2, kernel_size=1)
 
         self.lsgm = LandSemanticsGatingModule(
             decoder_channels,
-            host_class_ids=host_class_ids,
-            non_host_class_ids=non_host_class_ids,
+            support_class_ids=support_class_ids,
+            non_support_class_ids=non_support_class_ids,
         )
         self.damage_head = nn.Conv2d(decoder_channels, 2, kernel_size=1)
 
@@ -82,7 +82,6 @@ class LGDNet(nn.Module):
 
         land_logits = self.semantic_head(features)
         damage_features = self.damage_feature_head(features)
-        aux_damage_logits = self.aux_damage_head(damage_features)
 
         if self.use_lsgm:
             damage_features = self.lsgm(damage_features, land_logits)
@@ -92,5 +91,4 @@ class LGDNet(nn.Module):
         return {
             "land_logits": F.interpolate(land_logits, size=input_size, mode="bilinear"),
             "damage_logits": F.interpolate(damage_logits, size=input_size, mode="bilinear"),
-            "aux_damage_logits": F.interpolate(aux_damage_logits, size=input_size, mode="bilinear"),
         }
