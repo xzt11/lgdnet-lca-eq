@@ -1,21 +1,21 @@
 # LGDNet: Land-Guided Damage Network
 
-Open-source PyTorch implementation scaffold for **land-cover-conditioned earthquake damage assessment** from very-high-resolution post-event RGB imagery.
+Open-source PyTorch implementation scaffold for **land-cover-conditioned post-earthquake damage mapping** from very-high-resolution (VHR) post-event RGB imagery.
 
-This repository is based on the paper:
+This repository accompanies the paper:
 
-> Resolving Visual-Semantic Entanglement in VHR Damage Assessment: A Land-Cover Conditioned Framework
+> Land-cover-conditioned post-earthquake damage mapping from single-temporal VHR imagery
 
-The paper introduces the **LCA-EQ** benchmark and **LGDNet**, a dual-head segmentation framework that predicts:
+The paper introduces the **Land-Cover Anchored Earthquake (LCA-EQ)** benchmark and **LGDNet**, a dual-head segmentation framework that predicts:
 
-- a seven-class land-cover layer: `Buildings`, `Roads`, `Impervious Surfaces`, `Forest`, `Farmland`, `Water`, `Others`
-- a binary earthquake damage-state layer
+- a seven-class land-cover layer: `Building`, `Road`, `Impervious Surface`, `Forest`, `Farmland`, `Water`, `Other`
+- an independent binary visible-damage layer
 
-LGDNet uses land-cover probabilities as host priors through the **Land-Semantics Gating Module (LSGM)**, suppressing damage responses in non-host regions and promoting responses on plausible anthropogenic hosts.
+The key formulation is that visible damage is treated as a **state associated with an underlying land-cover class**, rather than as an eighth mutually exclusive land-cover category. LGDNet uses predicted land-cover probabilities as soft semantic guidance through the **Land-Semantics Gating Module (LSGM)**, promoting damage-related features on plausible built-environment support surfaces and suppressing damage-like responses on non-support surfaces.
 
 ## Repository Status
 
-This is a clean open-source project scaffold intended for reproducibility and further development. It includes:
+This repository is a clean open-source project scaffold for reproducibility and further development. It includes:
 
 - LGDNet model components
 - LSGM implementation
@@ -24,7 +24,13 @@ This is a clean open-source project scaffold intended for reproducibility and fu
 - metric utilities
 - paper-derived method notes
 
-The LCA-EQ dataset is not included. Add your own data according to the format below.
+The original VHR image tiles used to construct LCA-EQ are **not redistributed** because they are governed by third-party imagery licence terms. The releasable research assets are intended to include labels, AOI footprints, acquisition-time metadata, patch indices, event-level split files, preprocessing scripts, evaluation scripts, and model code.
+
+## LCA-EQ Data Summary
+
+LCA-EQ contains **6,683 annotated $1024 \times 1024$ image patches** extracted from post-event VHR RGB imagery at an approximate ground sampling distance of **0.3--0.5 m**. The benchmark covers eight earthquake events between 2018 and 2025. Each image patch is paired with spatially aligned land-cover and visible-damage labels.
+
+The benchmark uses an event-level split to evaluate cross-event generalization. All patches from the same earthquake event are assigned to the same subset.
 
 ## Installation
 
@@ -60,13 +66,15 @@ Class ids:
 
 | Id | Class |
 | --- | --- |
-| 0 | Buildings |
-| 1 | Roads |
-| 2 | Impervious Surfaces |
+| 0 | Building |
+| 1 | Road |
+| 2 | Impervious Surface |
 | 3 | Forest |
 | 4 | Farmland |
 | 5 | Water |
-| 6 | Others |
+| 6 | Other |
+
+Damage is stored in a separate binary layer and should not be treated as a land-cover class.
 
 ## Quick Model Check
 
@@ -84,19 +92,13 @@ print(out["damage_logits"].shape)
 
 ## Training
 
-The paper reports training with PyTorch 2.0, AdamW, 100 epochs, 512 x 512 random crops, cosine annealing, and a composite loss:
-
-```text
-L_total = 1.0 * L_damage + 0.5 * L_land + 0.3 * L_aux
-```
-
-Damage supervision uses strong positive weighting because damaged pixels are sparse.
-
-Configuration template:
+The scaffold configuration follows the paper setting with PyTorch, AdamW, event-level data splits, random crops, cosine annealing, and a combined damage and land-cover objective. See:
 
 ```bash
 configs/lgdnet_lca_eq.yaml
 ```
+
+Damage supervision uses positive weighting because damaged pixels are sparse.
 
 ## Project Layout
 
@@ -104,6 +106,7 @@ configs/lgdnet_lca_eq.yaml
 .
 ├── configs/
 ├── docs/
+├── scripts/
 ├── src/lgdnet/
 │   ├── data/
 │   ├── models/
@@ -117,8 +120,4 @@ configs/lgdnet_lca_eq.yaml
 
 ## Citation
 
-If this repository helps your work, cite the original paper and this codebase. See `CITATION.cff`.
-
-## License
-
-MIT License. See `LICENSE`.
+If this repository helps your work, please cite the original paper and this codebase. See `CITATION.cff`.
