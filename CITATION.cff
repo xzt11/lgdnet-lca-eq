@@ -5,18 +5,21 @@ type: software
 authors:
   - family-names: Xiao
     given-names: Zhentong
-  - family-names: He
-    given-names: Wei
   - family-names: Wang
     given-names: Haifeng
   - family-names: Yang
     given-names: Guangyi
+  - family-names: Tang
+    given-names: Minghao
+  - family-names: He
+    given-names: Wei
 license: MIT
 repository-code: "https://github.com/xzt11/lgdnet-lca-eq"
-abstract: "PyTorch implementation scaffold for land-cover-conditioned earthquake damage assessment with LGDNet and LSGM."
+abstract: "PyTorch implementation scaffold for land-cover-conditioned post-earthquake damage mapping with LGDNet and LSGM."
 keywords:
-  - earthquake damage assessment
-  - semantic segmentation
+  - post-earthquake damage mapping
+  - land-cover-conditioned inference
+  - visible-damage segmentation
   - remote sensing
   - very-high-resolution imagery
   - PyTorch
