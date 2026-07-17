@@ -1,13 +1,13 @@
-# LCA-EQ-Style Data Card
+# LCA-EQ Data Card
 
-This repository expects data following the two-layer formulation described in the paper. Visible damage is represented as a state associated with an underlying land-cover class, not as a mutually exclusive land-cover category.
+LCA-EQ follows a two-layer annotation design for land-cover-conditioned post-earthquake damage mapping. Visible damage is represented as a state associated with an underlying land-cover class, not as a mutually exclusive land-cover category.
 
 ## Inputs
 
 - post-event VHR RGB image patches
+- source patch size: 1024 x 1024 pixels
+- random training crop size: 384 x 384 pixels
 - approximate ground sampling distance: 0.3--0.5 m
-- patch size used by LCA-EQ: 1024 x 1024 pixels
-- optional pre-event imagery may be used only for future semantic-prior extensions
 
 ## Labels
 
@@ -34,13 +34,21 @@ The benchmark focuses on visible built-environment damage in post-event RGB VHR 
 
 Natural-terrain impacts such as landslides, liquefaction, ground rupture, and slope failures are outside the present label scope unless they are visually associated with mapped built-environment damage.
 
-## Recommended Split
+## Event-Level Split
 
-Use event-level splits whenever possible to measure cross-event generalization. All patches from the same earthquake event should be assigned to the same subset.
+LCA-EQ uses an event-level split. All patches from the same earthquake event are assigned to the same subset.
+
+- Train: Noto Peninsula 2024, Turkiye-Syria 2023, Mandalay 2025, Southwest Puerto Rico 2020
+- Validation: Yangbi 2021, Nippes 2021
+- Test: Al Haouz 2023, Sulawesi 2018
+
+The selected Southwest Puerto Rico AOIs contain no positive visible-damage labels and are included in the training set to provide diverse undamaged land-cover context and hard negative samples.
 
 ## Data Availability and Licensing
 
-The original Google Earth historical imagery used to construct LCA-EQ is not redistributed because its reuse is governed by third-party imagery licence terms. To support reproducibility, release or retain derived research assets such as land-cover labels, visible-damage annotations, AOI footprints, acquisition-time metadata, patch indices, split files, preprocessing scripts, and evaluation scripts. Exact reconstruction of the original image pixels depends on lawful access to the corresponding historical imagery.
+The original Google Earth historical imagery used to construct LCA-EQ is not redistributed because its reuse is governed by third-party imagery licence terms. The repository provides or indexes derived research assets needed for reproducible use, including land-cover labels, visible-damage annotations, AOI footprints, acquisition metadata, crop grids, split files, scripts, model code, and configuration files.
+
+Exact reconstruction of the original image pixels depends on lawful access to the corresponding historical imagery.
 
 ## Important Notes
 
