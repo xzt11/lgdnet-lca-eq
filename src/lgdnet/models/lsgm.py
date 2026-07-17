@@ -8,57 +8,59 @@ from torch.nn import functional as F
 
 
 class LandSemanticsGatingModule(nn.Module):
-    """Modulate damage features with land-cover-derived host priors.
-
-    The module follows the paper's core idea: land-cover probabilities are grouped
-    into host and non-host masks, detached from the damage loss path, and used to
-    build feature prototypes that suppress non-host-like damage responses and
-    promote host-like responses.
-    """
+    """Modulate damage features using land-cover-derived semantic guidance."""
 
     def __init__(
         self,
         channels: int,
-        host_class_ids: tuple[int, ...] = (0, 1, 2),
-        non_host_class_ids: tuple[int, ...] = (3, 4, 5, 6),
+        support_class_ids: tuple[int, ...] = (0, 1, 2),
+        non_support_class_ids: tuple[int, ...] = (3, 4, 5, 6),
+        host_class_ids: tuple[int, ...] | None = None,
+        non_host_class_ids: tuple[int, ...] | None = None,
         eps: float = 1e-6,
     ) -> None:
         super().__init__()
-        self.host_class_ids = host_class_ids
-        self.non_host_class_ids = non_host_class_ids
+        self.support_class_ids = host_class_ids if host_class_ids is not None else support_class_ids
+        self.non_support_class_ids = (
+            non_host_class_ids if non_host_class_ids is not None else non_support_class_ids
+        )
         self.eps = eps
 
         self.key = nn.Conv2d(channels, channels, kernel_size=1)
         self.value = nn.Conv2d(channels, channels, kernel_size=1)
-        self.host_temperature = nn.Parameter(torch.ones(1))
-        self.non_host_temperature = nn.Parameter(torch.ones(1))
+        self.support_temperature = nn.Parameter(torch.ones(1))
+        self.non_support_temperature = nn.Parameter(torch.ones(1))
         self.alpha = nn.Parameter(torch.zeros(1))
 
     def forward(self, damage_features: torch.Tensor, land_logits: torch.Tensor) -> torch.Tensor:
         land_probs = F.softmax(land_logits, dim=1)
 
-        host_mask = land_probs[:, self.host_class_ids].sum(dim=1, keepdim=True).detach()
-        non_host_mask = land_probs[:, self.non_host_class_ids].sum(dim=1, keepdim=True).detach()
+        support_mask = land_probs[:, self.support_class_ids].sum(dim=1, keepdim=True).detach()
+        non_support_mask = land_probs[:, self.non_support_class_ids].sum(dim=1, keepdim=True).detach()
 
-        if host_mask.shape[-2:] != damage_features.shape[-2:]:
-            host_mask = F.interpolate(host_mask, size=damage_features.shape[-2:], mode="bilinear")
-            non_host_mask = F.interpolate(
-                non_host_mask,
+        if support_mask.shape[-2:] != damage_features.shape[-2:]:
+            support_mask = F.interpolate(support_mask, size=damage_features.shape[-2:], mode="bilinear")
+            non_support_mask = F.interpolate(
+                non_support_mask,
                 size=damage_features.shape[-2:],
                 mode="bilinear",
             )
 
-        host_proto = self._masked_average_pool(damage_features, host_mask)
-        non_host_proto = self._masked_average_pool(damage_features, non_host_mask)
+        support_proto = self._masked_average_pool(damage_features, support_mask)
+        non_support_proto = self._masked_average_pool(damage_features, non_support_mask)
 
         key = self.key(damage_features)
         value = self.value(damage_features)
 
-        host_similarity = (key * host_proto).sum(dim=1, keepdim=True)
-        non_host_similarity = (key * non_host_proto).sum(dim=1, keepdim=True)
+        support_similarity = (key * support_proto).sum(dim=1, keepdim=True)
+        non_support_similarity = (key * non_support_proto).sum(dim=1, keepdim=True)
 
-        suppress_gate = 1.0 - torch.sigmoid(non_host_similarity / self.non_host_temperature.clamp_min(0.05))
-        promote_gate = torch.sigmoid(host_similarity / self.host_temperature.clamp_min(0.05))
+        suppress_gate = 1.0 - torch.sigmoid(
+            non_support_similarity / self.non_support_temperature.clamp_min(0.05)
+        )
+        promote_gate = torch.sigmoid(
+            support_similarity / self.support_temperature.clamp_min(0.05)
+        )
 
         return damage_features * suppress_gate + self.alpha * (promote_gate * value)
 
