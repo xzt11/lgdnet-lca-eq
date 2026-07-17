@@ -8,7 +8,12 @@ __pycache__/
 venv/
 build/
 dist/
-data/
+data/*
+!data/lca_eq/
+!data/lca_eq/**/
+!data/lca_eq/**/*.md
+!data/lca_eq/**/*.csv
+!data/lca_eq/**/*.txt
 outputs/
 checkpoints/
 *.pt
