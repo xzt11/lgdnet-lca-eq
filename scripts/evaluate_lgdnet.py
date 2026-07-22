@@ -48,8 +48,8 @@ def main() -> None:
         num_land_classes=config["data"]["num_land_classes"],
         decoder_channels=config["model"]["decoder_channels"],
         use_lsgm=config["model"].get("use_lsgm", True),
-        host_class_ids=tuple(config["model"].get("host_class_ids", [0, 1, 2])),
-        non_host_class_ids=tuple(config["model"].get("non_host_class_ids", [3, 4, 5, 6])),
+        host_class_ids=tuple(config["model"].get("host_class_ids", [1, 3, 5])),
+        non_host_class_ids=tuple(config["model"].get("non_host_class_ids", [2, 4, 6, 7])),
     ).to(device)
     load_checkpoint(model, Path(args.checkpoint))
     model.eval()

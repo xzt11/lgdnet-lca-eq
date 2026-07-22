@@ -24,8 +24,8 @@ class LocalSemanticGuidanceModule(nn.Module):
     def __init__(
         self,
         channels: int,
-        host_class_ids: tuple[int, ...] = (0, 1, 2),
-        non_host_class_ids: tuple[int, ...] = (3, 4, 5, 6),
+        host_class_ids: tuple[int, ...] = (1, 3, 5),
+        non_host_class_ids: tuple[int, ...] = (2, 4, 6, 7),
         eps: float = 1e-6,
     ) -> None:
         super().__init__()

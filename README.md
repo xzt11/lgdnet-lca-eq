@@ -68,13 +68,14 @@ Land-cover classes:
 
 | Id | Class |
 | --- | --- |
-| 0 | Buildings |
+| 0 | Background |
 | 1 | Roads |
-| 2 | Impervious surface |
-| 3 | Forest |
-| 4 | Farmland |
-| 5 | Water |
+| 2 | Farmland |
+| 3 | Buildings |
+| 4 | Forest |
+| 5 | Impervious surface |
 | 6 | Other |
+| 7 | Water |
 
 Damage masks are binary. Samples without visible-damage masks use damage label
 `255` and are ignored for damage supervision.
@@ -83,12 +84,12 @@ Damage masks are binary. Samples without visible-damage masks use damage label
 
 LGDNet uses a single post-event RGB image as input and predicts two outputs:
 
-1. seven-class land-cover segmentation;
+1. eight-class land-cover segmentation, including background;
 2. binary visible-damage segmentation.
 
 The Local-Semantic Guided Module (LSGM) groups land-cover probabilities into
-support classes (`Buildings`, `Roads`, `Impervious surface`) and non-support
-classes (`Forest`, `Farmland`, `Water`, `Other`). It pools semantic prototypes,
+support classes (`Roads`, `Buildings`, `Impervious surface`) and non-support
+classes (`Farmland`, `Forest`, `Other`, `Water`). It pools semantic prototypes,
 estimates normalized prototype affinities, and recalibrates damage features by
 residual modulation:
 
@@ -146,7 +147,6 @@ stored directly in Git.
 ```text
 configs/
 data/lca_eq/
-experiments/
 scripts/preprocess_lca_eq.py
 scripts/train.py
 scripts/evaluate_lgdnet.py

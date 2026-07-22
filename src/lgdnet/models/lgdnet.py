@@ -98,11 +98,11 @@ class LGDNet(nn.Module):
 
     def __init__(
         self,
-        num_land_classes: int = 7,
+        num_land_classes: int = 8,
         decoder_channels: int = 128,
         use_lsgm: bool = True,
-        host_class_ids: tuple[int, ...] = (0, 1, 2),
-        non_host_class_ids: tuple[int, ...] = (3, 4, 5, 6),
+        host_class_ids: tuple[int, ...] = (1, 3, 5),
+        non_host_class_ids: tuple[int, ...] = (2, 4, 6, 7),
     ) -> None:
         super().__init__()
         self.use_lsgm = use_lsgm
