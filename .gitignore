@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+# Keep the cleaned LCA-EQ release under data/lca_eq tracked.
+# Ignore only ad-hoc local data drops.
+/data/raw/
+/data/tmp/
+/data/lca_eq/*/images/
+outputs/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.log
+*.pdf
+*_extracted.txt
+.DS_Store
+Thumbs.db

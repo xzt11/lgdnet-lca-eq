@@ -1,0 +1,9 @@
+event_id,event_name,subset,date,country,settlement,patches
+noto_peninsula_japan_2024,Noto Peninsula,train,2024/01,Japan,Urban,3107
+turkiye_syria_2023,Türkiye-Syria,train,2023/02,Türkiye and Syria,Urban,1760
+mandalay_myanmar_2025,Mandalay,train,2025/03,Myanmar,Rural,178
+southwest_puerto_rico_2020,Southwest Puerto Rico,train,2020/01,USA,Urban,445
+yangbi_china_2021,Yangbi,validation,2021/05,China,Rural,183
+nippes_haiti_2021,Nippes,validation,2021/08,Haiti,Urban,170
+al_haouz_morocco_2023,Al Haouz,test,2023/09,Morocco,Rural,587
+sulawesi_indonesia_2018,Sulawesi,test,2018/09,Indonesia,Urban,253

@@ -1,0 +1,9 @@
+event_id,event_name,country,date,settlement,patches,aoi_geometry_file
+noto_peninsula_japan_2024,Noto Peninsula,Japan,2024/01,Urban,3107,
+turkiye_syria_2023,Türkiye-Syria,Türkiye and Syria,2023/02,Urban,1760,
+mandalay_myanmar_2025,Mandalay,Myanmar,2025/03,Rural,178,
+southwest_puerto_rico_2020,Southwest Puerto Rico,USA,2020/01,Urban,445,
+yangbi_china_2021,Yangbi,China,2021/05,Rural,183,
+nippes_haiti_2021,Nippes,Haiti,2021/08,Urban,170,
+al_haouz_morocco_2023,Al Haouz,Morocco,2023/09,Rural,587,
+sulawesi_indonesia_2018,Sulawesi,Indonesia,2018/09,Urban,253,

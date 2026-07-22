@@ -1,0 +1,49 @@
+project: lgdnet-lca-eq
+seed: 42
+
+environment:
+  python: ">=3.10"
+  torch: "2.7.1"
+  torchvision: "0.22.1"
+
+data:
+  root: data/lca_eq
+  split_name: paper_scene_split
+  train_manifest: data/lca_eq/splits/paper_scene_split/train.csv
+  val_manifest: data/lca_eq/splits/paper_scene_split/val.csv
+  test_manifest: data/lca_eq/splits/paper_scene_split/test.csv
+  image_size: 384
+  num_land_classes: 7
+
+model:
+  name: LGDNet
+  decoder_channels: 128
+  use_lsgm: true
+  host_class_ids: [0, 1, 2]
+  non_host_class_ids: [3, 4, 5, 6]
+
+loss:
+  damage_weight: 1.0
+  land_weight: 0.5
+  damage_class_weights: [1.0, 50.0]
+  land_class_weights: null
+
+optimizer:
+  name: AdamW
+  lr: 0.001
+  weight_decay: 0.01
+
+scheduler:
+  name: cosine
+  min_lr: 0.000001
+
+train:
+  epochs: 30
+  batch_size: 16
+  patience: 15
+  num_workers: 4
+  output_dir: outputs/lgdnet_lca_eq
+  monitor: val_combined_F1
+
+eval:
+  damage_threshold: 0.75
