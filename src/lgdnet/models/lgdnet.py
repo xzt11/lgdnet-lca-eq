@@ -7,7 +7,7 @@ The public implementation follows the manuscript-level model definition:
 - a Transformer bottleneck on the coarsest feature map;
 - an FPN-style top-down decoder with Mamba-style spatial sequence blocks;
 - separate land-cover and damage heads;
-- Local-Semantic Guided Module (LSGM) routing damage features with land-cover
+- Land-Semantics Gating Module (LSGM) routing damage features with land-cover
   probabilities.
 """
 
@@ -18,7 +18,7 @@ from torch import nn
 from torch.nn import functional as F
 from torchvision.models import ResNet101_Weights, resnet101
 
-from lgdnet.models.lsgm import LocalSemanticGuidanceModule
+from lgdnet.models.lsgm import LandSemanticsGatingModule
 
 
 class ConvBNAct(nn.Module):
@@ -211,7 +211,7 @@ class LGDNet(nn.Module):
         self.encoder = ResNet101Encoder(pretrained=pretrained_backbone)
         self.decoder = FPNMambaDecoder(self.encoder.out_channels, decoder_channels)
         self.heads = TaskHeads(decoder_channels, num_land_classes)
-        self.local_semantic_guidance = LocalSemanticGuidanceModule(
+        self.land_semantics_gating = LandSemanticsGatingModule(
             decoder_channels,
             host_class_ids=host_class_ids,
             non_host_class_ids=non_host_class_ids,
@@ -225,7 +225,7 @@ class LGDNet(nn.Module):
         land_logits_low = self.heads.forward_land(shared_features)
         damage_features = self.heads.forward_damage_features(shared_features)
         if self.use_lsgm:
-            damage_features = self.local_semantic_guidance(damage_features, land_logits_low)
+            damage_features = self.land_semantics_gating(damage_features, land_logits_low)
         damage_logits_low = self.heads.forward_damage_logits(damage_features)
 
         return {

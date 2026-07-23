@@ -101,7 +101,7 @@ The main network consists of an ImageNet-pretrained ResNet-101 encoder, a
 Transformer bottleneck, an FPN-style decoder with Mamba-based spatial sequence
 mixing blocks, and two task-specific prediction branches.
 
-The Local-Semantic Guided Module (LSGM) groups land-cover probabilities into
+The Land-Semantics Gating Module (LSGM) groups land-cover probabilities into
 support classes (`Buildings`, `Roads`, `Impervious surface`) and non-support
 classes (`Forest`, `Farmland`, `Water`, `Other`). It pools semantic prototypes,
 estimates normalized prototype affinities, and recalibrates damage features by

@@ -1,4 +1,4 @@
-"""Local-semantic guidance for land-conditioned damage features."""
+"""Land-Semantics Gating Module for land-conditioned damage features."""
 
 from __future__ import annotations
 
@@ -7,18 +7,19 @@ from torch import nn
 from torch.nn import functional as F
 
 
-class LocalSemanticGuidanceModule(nn.Module):
+class LandSemanticsGatingModule(nn.Module):
     """Recalibrate damage features with land-cover-derived host priors.
 
-    The module implements the LSGM block described in the paper:
+    The module implements the Land-Semantics Gating Module (LSGM) described in
+    the paper:
 
     1. convert land-cover logits to support/non-support probabilities;
     2. pool damage features into semantic prototypes under detached land masks;
     3. estimate host and non-host affinities;
     4. apply bounded residual modulation to the damage feature map.
 
-    The public alias ``LandSemanticsGatingModule`` is kept for backward
-    compatibility with earlier LGDNet checkpoints and examples.
+    The legacy alias ``LocalSemanticGuidanceModule`` is kept for backward
+    compatibility with earlier examples.
     """
 
     def __init__(
@@ -87,4 +88,4 @@ class LocalSemanticGuidanceModule(nn.Module):
         return numerator / denominator
 
 
-LandSemanticsGatingModule = LocalSemanticGuidanceModule
+LocalSemanticGuidanceModule = LandSemanticsGatingModule

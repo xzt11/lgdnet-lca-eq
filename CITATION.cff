@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "LGDNet: Land-Guided Damage Network for LCA-EQ"
+title: "Land-Cover-Conditioned Post-Earthquake Damage Mapping from Very High Resolution Imagery"
 message: "If you use this repository, please cite the original paper and this software."
 type: software
 authors:
@@ -9,6 +9,8 @@ authors:
     given-names: Wei
   - family-names: Wang
     given-names: Haifeng
+  - family-names: Tang
+    given-names: Minghao
   - family-names: Yang
     given-names: Guangyi
 license: MIT
