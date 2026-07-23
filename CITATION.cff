@@ -5,14 +5,14 @@ type: software
 authors:
   - family-names: Xiao
     given-names: Zhentong
-  - family-names: He
-    given-names: Wei
   - family-names: Wang
     given-names: Haifeng
-  - family-names: Tang
-    given-names: Minghao
   - family-names: Yang
     given-names: Guangyi
+  - family-names: Tang
+    given-names: Minghao
+  - family-names: He
+    given-names: Wei
 license: MIT
 repository-code: "https://github.com/xzt11/lgdnet-lca-eq"
 abstract: "Official PyTorch implementation for land-cover-conditioned earthquake damage assessment with LGDNet and LSGM."
