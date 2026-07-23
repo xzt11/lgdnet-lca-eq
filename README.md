@@ -101,6 +101,20 @@ The main network consists of an ImageNet-pretrained ResNet-101 encoder, a
 Transformer bottleneck, an FPN-style decoder with Mamba-based spatial sequence
 mixing blocks, and two task-specific prediction branches.
 
+The manuscript reports the LGDNet efficiency as:
+
+```text
+parameters: 60.67 M
+FLOPs:      505.95 G
+FPS:        9.93
+```
+
+These values correspond to the paper experimental implementation and evaluation
+environment. The self-contained public code follows the same module-level
+description and records the paper-reported values in
+`configs/lgdnet_lca_eq.yaml`; use the Zenodo checkpoint and the paper settings
+when reproducing the efficiency table.
+
 The Land-Semantics Gating Module (LSGM) groups land-cover probabilities into
 support classes (`Buildings`, `Roads`, `Impervious surface`) and non-support
 classes (`Forest`, `Farmland`, `Water`, `Other`). It pools semantic prototypes,
