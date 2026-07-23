@@ -101,6 +101,16 @@ The main network consists of an ImageNet-pretrained ResNet-101 encoder, a
 Transformer bottleneck, an FPN-style decoder with Mamba-based spatial sequence
 mixing blocks, and two task-specific prediction branches.
 
+`MambaDecoderBlock` uses a selective state-space Mamba mixer over flattened
+spatial tokens. The public code includes a PyTorch reference implementation with
+the same Mamba parameterization (`A_log`, `D`, input-dependent `B/C/delta`, and
+selective scan). For faster training/inference, install the optional optimized
+Mamba kernels:
+
+```bash
+pip install -e ".[mamba]"
+```
+
 The manuscript reports the LGDNet efficiency as:
 
 ```text

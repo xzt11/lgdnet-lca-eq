@@ -13,6 +13,8 @@ The public implementation follows the manuscript-level model definition:
 
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -99,43 +101,145 @@ class TransformerBottleneck(nn.Module):
         return tokens.transpose(1, 2).reshape(bsz, -1, height, width)
 
 
+class ReferenceMambaMixer(nn.Module):
+    """Self-contained Mamba mixer with selective state-space scan.
+
+    This module follows the Mamba block parameterization: input/gate projection,
+    depthwise causal convolution, input-dependent B/C/delta projections, SSM
+    parameters ``A_log`` and ``D``, selective scan, and output projection. It is
+    intentionally written in PyTorch so the public repository remains runnable
+    without compiled CUDA extensions; installing ``mamba-ssm`` enables the fast
+    kernel path in ``MambaDecoderBlock``.
+    """
+
+    def __init__(
+        self,
+        d_model: int,
+        d_state: int = 16,
+        d_conv: int = 4,
+        expand: int = 2,
+        dt_rank: int | str = "auto",
+        dt_min: float = 0.001,
+        dt_max: float = 0.1,
+        dt_init_floor: float = 1e-4,
+    ) -> None:
+        super().__init__()
+        self.d_model = d_model
+        self.d_state = d_state
+        self.d_conv = d_conv
+        self.expand = expand
+        self.d_inner = d_model * expand
+        self.dt_rank = math.ceil(d_model / 16) if dt_rank == "auto" else int(dt_rank)
+
+        self.in_proj = nn.Linear(d_model, self.d_inner * 2, bias=False)
+        self.conv1d = nn.Conv1d(
+            self.d_inner,
+            self.d_inner,
+            kernel_size=d_conv,
+            groups=self.d_inner,
+            padding=d_conv - 1,
+        )
+        self.x_proj = nn.Linear(self.d_inner, self.dt_rank + 2 * d_state, bias=False)
+        self.dt_proj = nn.Linear(self.dt_rank, self.d_inner, bias=True)
+
+        dt = torch.exp(
+            torch.rand(self.d_inner) * (math.log(dt_max) - math.log(dt_min)) + math.log(dt_min)
+        ).clamp(min=dt_init_floor)
+        inv_dt = dt + torch.log(-torch.expm1(-dt))
+        with torch.no_grad():
+            self.dt_proj.bias.copy_(inv_dt)
+
+        a = torch.arange(1, d_state + 1, dtype=torch.float32)
+        self.A_log = nn.Parameter(torch.log(a).repeat(self.d_inner, 1))
+        self.D = nn.Parameter(torch.ones(self.d_inner))
+        self.out_proj = nn.Linear(self.d_inner, d_model, bias=False)
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        """Apply selective SSM mixing to ``[B, L, C]`` tokens."""
+
+        batch, seqlen, _ = hidden_states.shape
+        xz = self.in_proj(hidden_states)
+        x, z = xz.chunk(2, dim=-1)
+
+        x = x.transpose(1, 2)
+        x = self.conv1d(x)[..., :seqlen]
+        x = F.silu(x)
+        x_tokens = x.transpose(1, 2)
+
+        x_dbl = self.x_proj(x_tokens)
+        dt, b_param, c_param = torch.split(
+            x_dbl,
+            [self.dt_rank, self.d_state, self.d_state],
+            dim=-1,
+        )
+        dt = F.softplus(self.dt_proj(dt)).transpose(1, 2)
+        b_param = b_param.float()
+        c_param = c_param.float()
+
+        a = -torch.exp(self.A_log.float())
+        d = self.D.float()
+        state = x.new_zeros((batch, self.d_inner, self.d_state), dtype=torch.float32)
+        outputs = []
+        x_float = x.float()
+        for step in range(seqlen):
+            delta = dt[:, :, step].float()
+            u = x_float[:, :, step]
+            b_step = b_param[:, step, :]
+            c_step = c_param[:, step, :]
+            delta_a = torch.exp(delta.unsqueeze(-1) * a.unsqueeze(0))
+            delta_bu = delta.unsqueeze(-1) * b_step.unsqueeze(1) * u.unsqueeze(-1)
+            state = delta_a * state + delta_bu
+            y = (state * c_step.unsqueeze(1)).sum(dim=-1) + d.unsqueeze(0) * u
+            outputs.append(y)
+
+        y = torch.stack(outputs, dim=1).to(hidden_states.dtype)
+        y = y * F.silu(z)
+        return self.out_proj(y)
+
+
 class MambaDecoderBlock(nn.Module):
     """Mamba-style spatial sequence mixing block for decoder feature maps.
 
-    The block keeps the repository self-contained while preserving the paper
-    design choice: local convolutional context is combined with gated
-    sequence-wise mixing in the decoder. It can be replaced by an external
-    ``mamba_ssm`` block without changing the LGDNet interface.
+    The block uses a selective state-space Mamba mixer on flattened spatial
+    tokens. If the optional ``mamba-ssm`` package is installed, its optimized
+    implementation is used; otherwise the repository falls back to a
+    self-contained PyTorch reference mixer with the same SSM parameterization.
     """
 
-    def __init__(self, channels: int, expansion: int = 2) -> None:
+    def __init__(
+        self,
+        channels: int,
+        expansion: int = 2,
+        d_state: int = 16,
+        d_conv: int = 4,
+    ) -> None:
         super().__init__()
-        hidden = channels * expansion
-        self.norm = nn.BatchNorm2d(channels)
-        self.in_proj = nn.Conv2d(channels, hidden * 2, kernel_size=1)
-        self.depthwise = nn.Conv2d(hidden, hidden, kernel_size=7, padding=3, groups=hidden)
-        self.row_mixer = nn.Conv1d(hidden, hidden, kernel_size=5, padding=2, groups=hidden)
-        self.col_mixer = nn.Conv1d(hidden, hidden, kernel_size=5, padding=2, groups=hidden)
-        self.out_proj = nn.Conv2d(hidden, channels, kernel_size=1)
+        self.norm = nn.LayerNorm(channels)
+        try:
+            from mamba_ssm.modules.mamba_simple import Mamba as FastMamba
+
+            self.mixer = FastMamba(
+                d_model=channels,
+                d_state=d_state,
+                d_conv=d_conv,
+                expand=expansion,
+            )
+        except ImportError:
+            self.mixer = ReferenceMambaMixer(
+                d_model=channels,
+                d_state=d_state,
+                d_conv=d_conv,
+                expand=expansion,
+            )
         self.gamma = nn.Parameter(torch.zeros(1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         residual = x
-        x = self.norm(x)
-        value, gate = self.in_proj(x).chunk(2, dim=1)
-        value = self.depthwise(value)
-
-        bsz, channels, height, width = value.shape
-        row_tokens = value.permute(0, 2, 1, 3).reshape(bsz * height, channels, width)
-        row_tokens = self.row_mixer(row_tokens).reshape(bsz, height, channels, width)
-        row_tokens = row_tokens.permute(0, 2, 1, 3)
-
-        col_tokens = value.permute(0, 3, 1, 2).reshape(bsz * width, channels, height)
-        col_tokens = self.col_mixer(col_tokens).reshape(bsz, width, channels, height)
-        col_tokens = col_tokens.permute(0, 2, 3, 1)
-
-        mixed = F.silu(row_tokens + col_tokens) * torch.sigmoid(gate)
-        return residual + self.gamma * self.out_proj(mixed)
+        bsz, channels, height, width = x.shape
+        tokens = x.flatten(2).transpose(1, 2)
+        tokens = self.mixer(self.norm(tokens))
+        mixed = tokens.transpose(1, 2).reshape(bsz, channels, height, width)
+        return residual + self.gamma * mixed
 
 
 class FPNMambaDecoder(nn.Module):
