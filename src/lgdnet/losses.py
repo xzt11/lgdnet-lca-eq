@@ -7,6 +7,10 @@ from torch import nn
 from torch.nn import functional as F
 
 
+DEFAULT_LAND_CLASS_WEIGHTS = [1.6963, 2.5613, 1.6376, 0.4630, 2.1080, 0.8263, 0.6390]
+DEFAULT_DAMAGE_CLASS_WEIGHTS = [0.5049, 51.2585]
+
+
 def dice_loss(
     logits: torch.Tensor,
     target: torch.Tensor,
@@ -69,8 +73,14 @@ class LGDNetLoss(nn.Module):
         super().__init__()
         self.damage_weight = damage_weight
         self.land_weight = land_weight
-        self.land_loss = CombinedSegmentationLoss(num_land_classes, land_class_weights)
-        self.damage_loss = CombinedSegmentationLoss(2, damage_class_weights or [1.0, 50.0])
+        self.land_loss = CombinedSegmentationLoss(
+            num_land_classes,
+            land_class_weights or DEFAULT_LAND_CLASS_WEIGHTS,
+        )
+        self.damage_loss = CombinedSegmentationLoss(
+            2,
+            damage_class_weights or DEFAULT_DAMAGE_CLASS_WEIGHTS,
+        )
 
     def forward(
         self,

@@ -26,5 +26,8 @@ The split CSV files keep the expected relative image paths so that users can
 place reconstructed 1024 x 1024 RGB patches under the corresponding `images/`
 directories before training or evaluation.
 
-Note: `southwest_puerto_rico_2020` currently has land-cover masks but no damage
-masks in this release. No synthetic all-zero damage masks were created.
+Note: `southwest_puerto_rico_2020` contains no positive visible-damage labels.
+The paper configuration lists this event under `hard_negative_events`; the
+training loader therefore treats missing Puerto Rico damage masks as valid
+all-zero masks so that these patches contribute to damage supervision as hard
+negative samples.

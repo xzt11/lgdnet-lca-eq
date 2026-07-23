@@ -1,5 +1,7 @@
 import torch
+from PIL import Image
 
+from lgdnet.data import LCAEQDataset
 from lgdnet.losses import LGDNetLoss
 from lgdnet.models import LGDNet, LandSemanticsGatingModule
 
@@ -40,3 +42,29 @@ def test_damage_ignore_mask_runs_for_land_only_samples():
     losses = criterion(outputs, land, damage)
     assert losses["damage"].ndim == 0
     assert torch.isfinite(losses["total"])
+
+
+def test_missing_puerto_rico_damage_mask_is_hard_negative(tmp_path):
+    event = "southwest_puerto_rico_2020"
+    event_dir = tmp_path / event
+    image_dir = event_dir / "images"
+    land_dir = event_dir / "land_masks"
+    image_dir.mkdir(parents=True)
+    land_dir.mkdir(parents=True)
+    Image.new("RGB", (8, 8), color=(128, 128, 128)).save(image_dir / "sample.png")
+    Image.new("L", (8, 8), color=3).save(land_dir / "sample.png")
+    manifest = tmp_path / "train.csv"
+    manifest.write_text(
+        "image,land_mask,damage_mask,event\n"
+        f"{event}/images/sample.png,{event}/land_masks/sample.png,,{event}\n",
+        encoding="utf-8",
+    )
+
+    dataset = LCAEQDataset(
+        manifest,
+        root=tmp_path,
+        hard_negative_events=(event,),
+        normalize=False,
+    )
+    sample = dataset[0]
+    assert torch.equal(sample["damage_mask"], torch.zeros((8, 8), dtype=torch.long))

@@ -50,6 +50,7 @@ def main() -> None:
         image_mean=tuple(config["augmentation"].get("mean", [0.485, 0.456, 0.406])),
         image_std=tuple(config["augmentation"].get("std", [0.229, 0.224, 0.225])),
         remap_land_labels=config["data"].get("remap_land_labels", True),
+        hard_negative_events=tuple(config["data"].get("hard_negative_events", [])),
     )
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=config["train"]["num_workers"])
 

@@ -81,6 +81,11 @@ and are excluded from land-cover loss and evaluation. Damage masks are binary.
 Samples without visible-damage masks use damage label `255` and are ignored for
 damage supervision.
 
+`southwest_puerto_rico_2020` is the hard-negative event used in the paper: it
+contains no positive visible-damage labels, and missing damage masks for this
+event are loaded as valid all-zero masks so that the patches contribute to
+damage supervision.
+
 If released masks store background as `0` and foreground categories as `1..7`,
 `LCAEQDataset` remaps them to the paper label order above and converts
 background/outside-AOI pixels to `255`.
@@ -126,6 +131,9 @@ L_damage: weighted cross-entropy + Dice
 monitor: val_combined_F1
 ```
 
+The released configuration stores the training-set inverse-frequency class
+weights used by the weighted cross-entropy terms.
+
 Run training:
 
 ```bash
@@ -142,6 +150,12 @@ Prepare or validate local dataset paths:
 
 ```bash
 python scripts/preprocess_lca_eq.py --root data/lca_eq
+```
+
+Recompute the training-set class weights:
+
+```bash
+python scripts/compute_lca_eq_class_weights.py --root data/lca_eq
 ```
 
 ## Checkpoint

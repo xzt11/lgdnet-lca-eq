@@ -49,6 +49,7 @@ class LCAEQDataset(Dataset):
         image_mean: tuple[float, float, float] = (0.485, 0.456, 0.406),
         image_std: tuple[float, float, float] = (0.229, 0.224, 0.225),
         remap_land_labels: bool = True,
+        hard_negative_events: tuple[str, ...] = (),
     ) -> None:
         self.manifest = Path(manifest)
         self.root = Path(root)
@@ -61,6 +62,7 @@ class LCAEQDataset(Dataset):
         self.image_mean = torch.tensor(image_mean, dtype=torch.float32).view(3, 1, 1)
         self.image_std = torch.tensor(image_std, dtype=torch.float32).view(3, 1, 1)
         self.remap_land_labels = remap_land_labels
+        self.hard_negative_events = set(hard_negative_events)
         with self.manifest.open(newline="", encoding="utf-8") as f:
             self.rows = list(csv.DictReader(f))
 
@@ -75,7 +77,12 @@ class LCAEQDataset(Dataset):
             land = self._remap_land_mask(land)
 
         damage_rel = row.get("damage_mask", "")
-        damage = self._read_mask(damage_rel).long() if damage_rel else torch.full_like(land, 255)
+        if damage_rel:
+            damage = self._read_mask(damage_rel).long()
+        elif row.get("event", "") in self.hard_negative_events:
+            damage = torch.zeros_like(land)
+        else:
+            damage = torch.full_like(land, 255)
 
         if self.scale_jitter is not None:
             image, land, damage = self._scale_jitter(image, land, damage, self.scale_jitter)
