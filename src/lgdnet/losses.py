@@ -64,7 +64,7 @@ class LGDNetLoss(nn.Module):
         land_weight: float = 0.5,
         damage_class_weights: list[float] | None = None,
         land_class_weights: list[float] | None = None,
-        num_land_classes: int = 8,
+        num_land_classes: int = 7,
     ) -> None:
         super().__init__()
         self.damage_weight = damage_weight

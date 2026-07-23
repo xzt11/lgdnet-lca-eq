@@ -27,6 +27,8 @@ def load_checkpoint(model: torch.nn.Module, checkpoint: Path) -> None:
     state = torch.load(checkpoint, map_location="cpu")
     if isinstance(state, dict) and "state_dict" in state:
         state = state["state_dict"]
+    if isinstance(state, dict) and "model_state_dict" in state:
+        state = state["model_state_dict"]
     if isinstance(state, dict):
         cleaned = {k.replace("model.", "", 1): v for k, v in state.items()}
         model.load_state_dict(cleaned, strict=False)
@@ -41,15 +43,23 @@ def main() -> None:
     batch_size = args.batch_size or config["train"]["batch_size"]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    dataset = LCAEQDataset(manifest, root=config["data"].get("root", "."))
+    dataset = LCAEQDataset(
+        manifest,
+        root=config["data"].get("root", "."),
+        normalize=config["augmentation"].get("normalize", True),
+        image_mean=tuple(config["augmentation"].get("mean", [0.485, 0.456, 0.406])),
+        image_std=tuple(config["augmentation"].get("std", [0.229, 0.224, 0.225])),
+        remap_land_labels=config["data"].get("remap_land_labels", True),
+    )
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=config["train"]["num_workers"])
 
     model = LGDNet(
         num_land_classes=config["data"]["num_land_classes"],
         decoder_channels=config["model"]["decoder_channels"],
         use_lsgm=config["model"].get("use_lsgm", True),
-        host_class_ids=tuple(config["model"].get("host_class_ids", [1, 3, 5])),
-        non_host_class_ids=tuple(config["model"].get("non_host_class_ids", [2, 4, 6, 7])),
+        host_class_ids=tuple(config["model"].get("host_class_ids", [0, 1, 2])),
+        non_host_class_ids=tuple(config["model"].get("non_host_class_ids", [3, 4, 5, 6])),
+        pretrained_backbone=False,
     ).to(device)
     load_checkpoint(model, Path(args.checkpoint))
     model.eval()
@@ -64,7 +74,8 @@ def main() -> None:
             damage = batch["damage_mask"]
             outputs = model(images)
             land_pred = outputs["land_logits"].argmax(dim=1).cpu()
-            damage_pred = outputs["damage_logits"].argmax(dim=1).cpu()
+            damage_prob = torch.softmax(outputs["damage_logits"], dim=1)[:, 1]
+            damage_pred = (damage_prob >= config["eval"].get("damage_threshold", 0.5)).long().cpu()
             land_cm += confusion_matrix(land_pred, land, config["data"]["num_land_classes"])
             valid_damage = damage != 255
             if valid_damage.any():

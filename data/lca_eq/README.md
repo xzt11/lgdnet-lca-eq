@@ -8,7 +8,9 @@ Directory names follow the event names reported in the manuscript table.
 Each event directory follows this layout:
 
 - `images/`: expected location of post-event RGB image patches reconstructed by users with lawful access to the source imagery
-- `land_masks/`: land-cover labels
+- `land_masks/`: land-cover labels. The training loader remaps released masks
+  to the seven foreground classes used in the paper and converts background or
+  outside-AOI pixels to ignore label `255`.
 - `damage_masks/`: binary visible-damage labels when available
 
 Split manifests are intentionally limited to the event-level scene split used in

@@ -1,4 +1,4 @@
-# LGDNet: Land-Guided Damage Network
+# Land-Cover-Conditioned Post-Earthquake Damage Mapping from Very High Resolution Imagery
 
 Official PyTorch implementation of LGDNet for land-cover-conditioned earthquake
 damage assessment from post-event very-high-resolution RGB imagery.
@@ -9,7 +9,7 @@ This repository provides the code and release assets described in the paper:
 - training configuration for the paper setting
 - two-task loss implementation for land-cover and damage supervision
 - preprocessing and evaluation scripts
-- LCA-EQ labels, AOI metadata, event metadata, and the paper scene split
+- LCA-EQ labels, AOI metadata, event metadata, and the paper event-level split
 - links to the full LCA-EQ image archive and the best checkpoint on Zenodo
 
 ## Environment
@@ -64,32 +64,41 @@ val: 353
 test: 840
 ```
 
-Land-cover classes:
+Land-cover classes used for loss and evaluation:
 
 | Id | Class |
 | --- | --- |
-| 0 | Background |
+| 0 | Buildings |
 | 1 | Roads |
-| 2 | Farmland |
-| 3 | Buildings |
-| 4 | Forest |
-| 5 | Impervious surface |
+| 2 | Impervious surface |
+| 3 | Forest |
+| 4 | Farmland |
+| 5 | Water |
 | 6 | Other |
-| 7 | Water |
 
-Damage masks are binary. Samples without visible-damage masks use damage label
-`255` and are ignored for damage supervision.
+Background pixels outside annotated AOIs are encoded as `255` after preprocessing
+and are excluded from land-cover loss and evaluation. Damage masks are binary.
+Samples without visible-damage masks use damage label `255` and are ignored for
+damage supervision.
+
+If released masks store background as `0` and foreground categories as `1..7`,
+`LCAEQDataset` remaps them to the paper label order above and converts
+background/outside-AOI pixels to `255`.
 
 ## Model
 
 LGDNet uses a single post-event RGB image as input and predicts two outputs:
 
-1. eight-class land-cover segmentation, including background;
+1. seven-class land-cover segmentation;
 2. binary visible-damage segmentation.
 
+The main network consists of an ImageNet-pretrained ResNet-101 encoder, a
+Transformer bottleneck, an FPN-style decoder with Mamba-based spatial sequence
+mixing blocks, and two task-specific prediction branches.
+
 The Local-Semantic Guided Module (LSGM) groups land-cover probabilities into
-support classes (`Roads`, `Buildings`, `Impervious surface`) and non-support
-classes (`Farmland`, `Forest`, `Other`, `Water`). It pools semantic prototypes,
+support classes (`Buildings`, `Roads`, `Impervious surface`) and non-support
+classes (`Forest`, `Farmland`, `Water`, `Other`). It pools semantic prototypes,
 estimates normalized prototype affinities, and recalibrates damage features by
 residual modulation:
 
@@ -104,6 +113,13 @@ The default configuration follows the paper:
 ```text
 random crop size: 384 x 384
 epochs: 30
+batch size: 8
+optimizer: AdamW + Lookahead
+pretrained encoder learning rate: 6e-5
+new module learning rate: 6e-4
+scheduler: cosine annealing
+augmentation: scale jittering 0.75-1.25, horizontal/vertical flipping,
+              per-channel ImageNet normalization
 loss: L = lambda_land * L_land + lambda_damage * L_damage
 L_land: weighted cross-entropy + Dice
 L_damage: weighted cross-entropy + Dice
@@ -140,7 +156,8 @@ SHA256: 754a9d0c7a259c37e4b832dacafae2df72b72693f97707a2c3a101c779530ea9
 ```
 
 The checkpoint is provided through the Zenodo model record above rather than
-stored directly in Git.
+stored directly in Git. The released checkpoint should be used with the paper
+LGDNet architecture in `src/lgdnet/models/lgdnet.py`.
 
 ## Repository layout
 
