@@ -77,13 +77,14 @@ class TransformerBottleneck(nn.Module):
         num_layers: int = 2,
         num_heads: int = 8,
         dropout: float = 0.1,
+        mlp_ratio: int = 4,
     ) -> None:
         super().__init__()
         self.proj = nn.Conv2d(in_channels, embed_dim, kernel_size=1)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=embed_dim,
             nhead=num_heads,
-            dim_feedforward=embed_dim * 4,
+            dim_feedforward=embed_dim * mlp_ratio,
             dropout=dropout,
             activation="gelu",
             batch_first=True,
@@ -245,16 +246,38 @@ class MambaDecoderBlock(nn.Module):
 class FPNMambaDecoder(nn.Module):
     """FPN decoder with Mamba-style refinement after each top-down fusion."""
 
-    def __init__(self, encoder_channels: tuple[int, int, int, int], decoder_channels: int) -> None:
+    def __init__(
+        self,
+        encoder_channels: tuple[int, int, int, int],
+        decoder_channels: int,
+        transformer_layers: int = 2,
+        transformer_heads: int = 8,
+        transformer_dropout: float = 0.1,
+        mamba_state: int = 16,
+        mamba_conv: int = 4,
+        mamba_expansion: int = 2,
+    ) -> None:
         super().__init__()
         c2, c3, c4, c5 = encoder_channels
-        self.bottleneck = TransformerBottleneck(c5, decoder_channels)
+        self.bottleneck = TransformerBottleneck(
+            c5,
+            decoder_channels,
+            num_layers=transformer_layers,
+            num_heads=transformer_heads,
+            dropout=transformer_dropout,
+        )
         self.lat4 = nn.Conv2d(c4, decoder_channels, kernel_size=1)
         self.lat3 = nn.Conv2d(c3, decoder_channels, kernel_size=1)
         self.lat2 = nn.Conv2d(c2, decoder_channels, kernel_size=1)
-        self.refine4 = MambaDecoderBlock(decoder_channels)
-        self.refine3 = MambaDecoderBlock(decoder_channels)
-        self.refine2 = MambaDecoderBlock(decoder_channels)
+        self.refine4 = MambaDecoderBlock(
+            decoder_channels, expansion=mamba_expansion, d_state=mamba_state, d_conv=mamba_conv
+        )
+        self.refine3 = MambaDecoderBlock(
+            decoder_channels, expansion=mamba_expansion, d_state=mamba_state, d_conv=mamba_conv
+        )
+        self.refine2 = MambaDecoderBlock(
+            decoder_channels, expansion=mamba_expansion, d_state=mamba_state, d_conv=mamba_conv
+        )
         self.out = nn.Sequential(
             ConvBNAct(decoder_channels, decoder_channels),
             ConvBNAct(decoder_channels, decoder_channels),
@@ -286,7 +309,8 @@ class TaskHeads(nn.Module):
             ConvBNAct(channels, channels),
             nn.Dropout2d(dropout),
         )
-        self.damage_classifier = nn.Conv2d(channels, 2, kernel_size=1)
+        # The manuscript defines one damage logit per pixel with sigmoid output.
+        self.damage_classifier = nn.Conv2d(channels, 1, kernel_size=1)
 
     def forward_land(self, features: torch.Tensor) -> torch.Tensor:
         return self.land_branch(features)
@@ -309,16 +333,49 @@ class LGDNet(nn.Module):
         host_class_ids: tuple[int, ...] = (0, 1, 2),
         non_host_class_ids: tuple[int, ...] = (3, 4, 5, 6),
         pretrained_backbone: bool = True,
+        transformer_layers: int = 2,
+        transformer_heads: int = 8,
+        transformer_dropout: float = 0.1,
+        mamba_state: int = 16,
+        mamba_conv: int = 4,
+        mamba_expansion: int = 2,
+        lsgm_embedding_channels: int | None = None,
+        lsgm_rho: float = 0.9,
+        lsgm_eps: float = 1e-6,
     ) -> None:
         super().__init__()
+        support_ids = tuple(host_class_ids)
+        non_support_ids = tuple(non_host_class_ids)
+        all_ids = support_ids + non_support_ids
+        if (
+            len(set(support_ids)) != len(support_ids)
+            or len(set(non_support_ids)) != len(non_support_ids)
+            or set(support_ids) & set(non_support_ids)
+            or set(all_ids) != set(range(num_land_classes))
+        ):
+            raise ValueError(
+                "support and non-support IDs must be disjoint and partition all land-cover classes"
+            )
         self.use_lsgm = use_lsgm
         self.encoder = ResNet101Encoder(pretrained=pretrained_backbone)
-        self.decoder = FPNMambaDecoder(self.encoder.out_channels, decoder_channels)
+        self.decoder = FPNMambaDecoder(
+            self.encoder.out_channels,
+            decoder_channels,
+            transformer_layers=transformer_layers,
+            transformer_heads=transformer_heads,
+            transformer_dropout=transformer_dropout,
+            mamba_state=mamba_state,
+            mamba_conv=mamba_conv,
+            mamba_expansion=mamba_expansion,
+        )
         self.heads = TaskHeads(decoder_channels, num_land_classes)
         self.land_semantics_gating = LandSemanticsGatingModule(
             decoder_channels,
             host_class_ids=host_class_ids,
             non_host_class_ids=non_host_class_ids,
+            embedding_channels=lsgm_embedding_channels,
+            rho=lsgm_rho,
+            eps=lsgm_eps,
         )
 
     def forward(self, image: torch.Tensor) -> dict[str, torch.Tensor]:
@@ -328,14 +385,15 @@ class LGDNet(nn.Module):
 
         land_logits_low = self.heads.forward_land(shared_features)
         damage_features = self.heads.forward_damage_features(shared_features)
+        land_logits = F.interpolate(
+            land_logits_low, size=input_size, mode="bilinear", align_corners=False
+        )
         if self.use_lsgm:
-            damage_features = self.land_semantics_gating(damage_features, land_logits_low)
+            damage_features = self.land_semantics_gating(damage_features, land_logits)
         damage_logits_low = self.heads.forward_damage_logits(damage_features)
 
         return {
-            "land_logits": F.interpolate(
-                land_logits_low, size=input_size, mode="bilinear", align_corners=False
-            ),
+            "land_logits": land_logits,
             "damage_logits": F.interpolate(
                 damage_logits_low, size=input_size, mode="bilinear", align_corners=False
             ),

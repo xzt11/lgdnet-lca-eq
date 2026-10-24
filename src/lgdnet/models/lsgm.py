@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -27,24 +29,39 @@ class LandSemanticsGatingModule(nn.Module):
         channels: int,
         host_class_ids: tuple[int, ...] = (0, 1, 2),
         non_host_class_ids: tuple[int, ...] = (3, 4, 5, 6),
+        embedding_channels: int | None = None,
+        rho: float = 0.9,
         eps: float = 1e-6,
     ) -> None:
         super().__init__()
         self.support_class_ids = host_class_ids
         self.non_support_class_ids = non_host_class_ids
+        if not 0.0 < rho <= 1.0:
+            raise ValueError(f"rho must be in (0, 1], got {rho}")
+        self.rho = float(rho)
         self.eps = eps
 
-        self.damage_projection = nn.Conv2d(channels, channels, kernel_size=1)
-        self.support_temperature = nn.Parameter(torch.ones(1))
-        self.non_support_temperature = nn.Parameter(torch.ones(1))
+        embedding_channels = channels // 2 if embedding_channels is None else embedding_channels
+        if embedding_channels <= 0 or embedding_channels >= channels:
+            raise ValueError(
+                "embedding_channels must be positive and lower than the damage feature channels"
+            )
+        self.embedding_channels = embedding_channels
+        self.damage_projection = nn.Conv2d(channels, embedding_channels, kernel_size=1)
+        # Initialize softplus(gamma) to one while keeping gamma unconstrained.
+        initial_gamma = math.log(math.expm1(1.0 - eps))
+        self.support_temperature_raw = nn.Parameter(torch.full((1,), initial_gamma))
+        self.non_support_temperature_raw = nn.Parameter(torch.full((1,), initial_gamma))
         self.support_scale = nn.Parameter(torch.zeros(1))
         self.non_support_scale = nn.Parameter(torch.zeros(1))
 
     def forward(self, damage_features: torch.Tensor, land_logits: torch.Tensor) -> torch.Tensor:
         land_probs = F.softmax(land_logits, dim=1)
 
-        support_mask = self._group_probability(land_probs, self.support_class_ids).detach()
-        non_support_mask = self._group_probability(land_probs, self.non_support_class_ids).detach()
+        # Keep the semantic probabilities in the computation graph, as implied
+        # by the differentiable equations in the manuscript.
+        support_mask = self._group_probability(land_probs, self.support_class_ids)
+        non_support_mask = self._group_probability(land_probs, self.non_support_class_ids)
 
         if support_mask.shape[-2:] != damage_features.shape[-2:]:
             support_mask = F.interpolate(support_mask, size=damage_features.shape[-2:], mode="bilinear")
@@ -61,14 +78,16 @@ class LandSemanticsGatingModule(nn.Module):
         support_affinity = self._prototype_affinity(projected_damage, support_proto)
         non_support_affinity = self._prototype_affinity(projected_damage, non_support_proto)
 
-        support_gate = torch.sigmoid(support_affinity / self.support_temperature.clamp_min(0.05))
+        tau_support = F.softplus(self.support_temperature_raw) + self.eps
+        tau_non_support = F.softplus(self.non_support_temperature_raw) + self.eps
+        support_gate = torch.sigmoid(support_affinity / tau_support)
         non_support_gate = torch.sigmoid(
-            non_support_affinity / self.non_support_temperature.clamp_min(0.05)
+            non_support_affinity / tau_non_support
         )
         lambda_support = torch.sigmoid(self.support_scale)
-        lambda_non_support = torch.sigmoid(self.non_support_scale)
+        lambda_non_support = self.rho * torch.sigmoid(self.non_support_scale)
         modulation = 1.0 + lambda_support * support_gate - lambda_non_support * non_support_gate
-        return damage_features * modulation.clamp_min(self.eps)
+        return damage_features * modulation
 
     def _group_probability(self, probabilities: torch.Tensor, class_ids: tuple[int, ...]) -> torch.Tensor:
         valid_ids = [class_id for class_id in class_ids if 0 <= class_id < probabilities.shape[1]]

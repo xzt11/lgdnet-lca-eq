@@ -68,10 +68,13 @@ def main() -> None:
         damage_rel = row.get("damage_mask", "").strip()
         if damage_rel:
             damage = np.array(Image.open(root / damage_rel).convert("L"), dtype=np.uint8)
-            damage_counts[0] += np.count_nonzero(damage == 0)
-            damage_counts[1] += np.count_nonzero(damage == 1)
+            if damage.shape != land.shape:
+                raise ValueError(f"Land/damage mask shape mismatch for {row['image']}")
+            valid = land != 255
+            damage_counts[0] += np.count_nonzero((damage == 0) & valid)
+            damage_counts[1] += np.count_nonzero((damage == 1) & valid)
         elif row.get("event", "") in hard_negative_events:
-            damage_counts[0] += land.size
+            damage_counts[0] += np.count_nonzero(land != 255)
 
     land_weights = inverse_frequency_weights(land_counts)
     damage_weights = inverse_frequency_weights(damage_counts)

@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import json
+import random
+import shutil
 from pathlib import Path
 from typing import Iterable
 
+import numpy as np
 import torch
 import yaml
 from torch.utils.data import DataLoader
@@ -14,6 +18,12 @@ from lgdnet.data import LCAEQDataset
 from lgdnet.losses import LGDNetLoss
 from lgdnet.metrics import confusion_matrix, f1_from_confusion, iou_from_confusion
 from lgdnet.models import LGDNet
+
+
+def seed_worker(_: int) -> None:
+    worker_seed = torch.initial_seed() % (2**32)
+    random.seed(worker_seed)
+    np.random.seed(worker_seed)
 
 
 class Lookahead:
@@ -112,13 +122,18 @@ def evaluate(
     criterion: LGDNetLoss,
     device: torch.device,
     num_land_classes: int,
-    damage_threshold: float,
+    damage_threshold: float | None,
 ) -> dict[str, float]:
     model.eval()
     land_cm = torch.zeros((num_land_classes, num_land_classes), dtype=torch.long)
     damage_cm = torch.zeros((2, 2), dtype=torch.long)
     total_loss = 0.0
     batches = 0
+    # A compact pooled histogram permits validation threshold calibration
+    # without retaining every full-resolution probability map in memory.
+    bins = 1001
+    positive_hist = torch.zeros(bins, dtype=torch.long, device=device)
+    negative_hist = torch.zeros(bins, dtype=torch.long, device=device)
 
     for batch in loader:
         images, land, damage = move_batch(batch, device)
@@ -128,14 +143,43 @@ def evaluate(
         batches += 1
 
         land_pred = outputs["land_logits"].argmax(dim=1).cpu()
-        damage_prob = torch.softmax(outputs["damage_logits"], dim=1)[:, 1]
-        damage_pred = (damage_prob >= damage_threshold).long().cpu()
+        damage_prob = torch.sigmoid(outputs["damage_logits"][:, 0])
         land_cpu = land.cpu()
         damage_cpu = damage.cpu()
         land_cm += confusion_matrix(land_pred, land_cpu, num_land_classes)
-        valid_damage = damage_cpu != 255
+        valid_damage = damage != 255
         if valid_damage.any():
-            damage_cm += confusion_matrix(damage_pred[valid_damage], damage_cpu[valid_damage], 2)
+            valid_target = damage[valid_damage]
+            if torch.any((valid_target < 0) | (valid_target > 1)):
+                raise ValueError("Damage GT must be binary 0/1 or ignore=255")
+            scores = damage_prob[valid_damage]
+            bin_ids = (scores * 1000).floor().long().clamp_(0, 1000)
+            positive_hist += torch.bincount(bin_ids[valid_target == 1], minlength=bins)
+            negative_hist += torch.bincount(bin_ids[valid_target == 0], minlength=bins)
+
+    if damage_threshold is None:
+        candidate_ids = torch.arange(bins, device=device)
+        tp_by_threshold = positive_hist.flip(0).cumsum(0).flip(0)
+        fp_by_threshold = negative_hist.flip(0).cumsum(0).flip(0)
+        fn_by_threshold = positive_hist.sum() - tp_by_threshold
+        f1_by_threshold = 2 * tp_by_threshold / (
+            2 * tp_by_threshold + fp_by_threshold + fn_by_threshold
+        ).clamp_min(1)
+        selected_id = int(torch.argmax(f1_by_threshold).item())
+        selected_threshold = selected_id / 1000.0
+    else:
+        selected_id = int(round(float(damage_threshold) * 1000))
+        if not 0 <= selected_id <= 1000:
+            raise ValueError("damage_threshold must be in [0, 1]")
+        selected_threshold = selected_id / 1000.0
+
+    tp = positive_hist[selected_id:].sum().item()
+    fp = negative_hist[selected_id:].sum().item()
+    total_positive = positive_hist.sum().item()
+    total_negative = negative_hist.sum().item()
+    fn = total_positive - tp
+    tn = total_negative - fp
+    damage_cm = torch.tensor([[tn, fp], [fn, tp]], dtype=torch.long)
 
     land_iou = iou_from_confusion(land_cm)
     land_f1 = f1_from_confusion(land_cm)
@@ -149,6 +193,7 @@ def evaluate(
         "damage_IoU": float(damage_iou[1]),
         "damage_F1": float(damage_f1[1]),
         "val_combined_F1": float(combined_f1),
+        "damage_threshold": selected_threshold,
     }
 
 
@@ -167,9 +212,15 @@ def save_checkpoint(path: Path, model: LGDNet, optimizer: torch.optim.Optimizer,
 def main() -> None:
     args = parse_args()
     config = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
-    torch.manual_seed(config.get("seed", 42))
+    seed = int(config.get("seed", 42))
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    loader_generator = torch.Generator().manual_seed(seed)
     train_data = make_dataset(config, "train", train=True)
     val_data = make_dataset(config, "val", train=False)
     train_loader = DataLoader(
@@ -178,7 +229,9 @@ def main() -> None:
         shuffle=True,
         num_workers=config["train"]["num_workers"],
         pin_memory=torch.cuda.is_available(),
-        drop_last=True,
+        drop_last=False,
+        worker_init_fn=seed_worker,
+        generator=loader_generator,
     )
     val_loader = DataLoader(
         val_data,
@@ -186,6 +239,7 @@ def main() -> None:
         shuffle=False,
         num_workers=config["train"]["num_workers"],
         pin_memory=torch.cuda.is_available(),
+        worker_init_fn=seed_worker,
     )
 
     model = LGDNet(
@@ -195,6 +249,15 @@ def main() -> None:
         host_class_ids=tuple(config["model"]["host_class_ids"]),
         non_host_class_ids=tuple(config["model"]["non_host_class_ids"]),
         pretrained_backbone=config["model"].get("pretrained_backbone", True),
+        transformer_layers=config["model"].get("transformer_layers", 2),
+        transformer_heads=config["model"].get("transformer_heads", 8),
+        transformer_dropout=config["model"].get("transformer_dropout", 0.1),
+        mamba_state=config["model"].get("mamba_state", 16),
+        mamba_conv=config["model"].get("mamba_conv", 4),
+        mamba_expansion=config["model"].get("mamba_expansion", 2),
+        lsgm_embedding_channels=config["model"].get("lsgm_embedding_channels"),
+        lsgm_rho=config["model"].get("lsgm_rho", 0.9),
+        lsgm_eps=config["model"].get("lsgm_eps", 1e-6),
     ).to(device)
 
     criterion = LGDNetLoss(
@@ -218,6 +281,8 @@ def main() -> None:
 
     output_dir = Path(config["train"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(args.config, output_dir / "config.yaml")
+    history_path = output_dir / "history.jsonl"
     monitor = config["train"].get("monitor", "val_combined_F1")
     best_score = float("-inf")
 
@@ -241,14 +306,17 @@ def main() -> None:
             criterion,
             device,
             config["data"]["num_land_classes"],
-            config["eval"].get("damage_threshold", 0.5),
+            config["eval"].get("damage_threshold"),
         )
         score = val_metrics[monitor]
         print(
             f"epoch={epoch:03d} train_loss={train_loss:.4f} "
             f"val_loss={val_metrics['loss']:.4f} val_combined_F1={score:.6f} "
-            f"land_F1={val_metrics['land_F1']:.6f} damage_F1={val_metrics['damage_F1']:.6f}"
+            f"land_F1={val_metrics['land_F1']:.6f} damage_F1={val_metrics['damage_F1']:.6f} "
+            f"threshold={val_metrics['damage_threshold']:.3f}"
         )
+        with history_path.open("a", encoding="utf-8") as history_file:
+            history_file.write(json.dumps({"epoch": epoch, "train_loss": train_loss, **val_metrics}) + "\n")
 
         save_checkpoint(output_dir / "last.ckpt", model, base_optimizer, epoch, val_metrics)
         if score > best_score:

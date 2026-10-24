@@ -8,7 +8,7 @@ from torch.nn import functional as F
 
 
 DEFAULT_LAND_CLASS_WEIGHTS = [1.6963, 2.5613, 1.6376, 0.4630, 2.1080, 0.8263, 0.6390]
-DEFAULT_DAMAGE_CLASS_WEIGHTS = [0.5049, 51.2585]
+DEFAULT_DAMAGE_CLASS_WEIGHTS = [0.5054, 46.6519]
 
 
 def dice_loss(
@@ -21,8 +21,14 @@ def dice_loss(
     valid = target != ignore_index
     if not torch.any(valid):
         return logits.sum() * 0.0
+    if torch.any((target[valid] < 0) | (target[valid] >= num_classes)):
+        raise ValueError(f"Target contains labels outside [0, {num_classes - 1}] and ignore={ignore_index}")
 
-    probs = F.softmax(logits, dim=1)
+    if logits.shape[1] == 1 and num_classes == 2:
+        positive = torch.sigmoid(logits[:, 0])
+        probs = torch.stack((1.0 - positive, positive), dim=1)
+    else:
+        probs = F.softmax(logits, dim=1)
     safe_target = target.masked_fill(~valid, 0)
     target_one_hot = F.one_hot(safe_target.long(), num_classes=num_classes).permute(0, 3, 1, 2).float()
     valid = valid.unsqueeze(1)
@@ -55,8 +61,52 @@ class CombinedSegmentationLoss(nn.Module):
         if not torch.any(target != self.ignore_index):
             return logits.sum() * 0.0
         weights = self.class_weights.to(logits.device) if self.class_weights is not None else None
-        ce = F.cross_entropy(logits, target.long(), weight=weights, ignore_index=self.ignore_index)
+        valid = target != self.ignore_index
+        if torch.any((target[valid] < 0) | (target[valid] >= self.num_classes)):
+            raise ValueError(
+                f"Target contains labels outside [0, {self.num_classes - 1}] "
+                f"and ignore={self.ignore_index}"
+            )
+        # The manuscript defines the weighted CE as a sum divided by the
+        # number of valid pixels (rather than PyTorch's weighted-mean divisor).
+        ce_map = F.cross_entropy(
+            logits, target.long(), weight=weights, ignore_index=self.ignore_index, reduction="none"
+        )
+        ce = ce_map[valid].sum() / valid.sum().clamp_min(1)
         return ce + dice_loss(logits, target, self.num_classes, ignore_index=self.ignore_index)
+
+
+class BinaryDamageLoss(nn.Module):
+    """Weighted CE + two-class Dice for the manuscript's single damage logit."""
+
+    def __init__(
+        self,
+        class_weights: list[float] | None = None,
+        ignore_index: int = 255,
+    ) -> None:
+        super().__init__()
+        self.ignore_index = ignore_index
+        weights = class_weights or DEFAULT_DAMAGE_CLASS_WEIGHTS
+        if len(weights) != 2:
+            raise ValueError("Damage class_weights must contain [undamaged, damaged] weights")
+        self.register_buffer("class_weights", torch.tensor(weights, dtype=torch.float32))
+
+    def forward(self, logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        if logits.ndim != 4 or logits.shape[1] != 1:
+            raise ValueError(f"Expected damage logits [B,1,H,W], got {tuple(logits.shape)}")
+        valid = target != self.ignore_index
+        if not torch.any(valid):
+            return logits.sum() * 0.0
+        if torch.any((target[valid] < 0) | (target[valid] > 1)):
+            raise ValueError("Damage targets must be binary 0/1 or the configured ignore label")
+
+        target_float = target.clamp(0, 1).to(dtype=logits.dtype)
+        ce_map = F.binary_cross_entropy_with_logits(logits[:, 0], target_float, reduction="none")
+        weights = self.class_weights.to(device=logits.device, dtype=logits.dtype)
+        pixel_weights = torch.where(target_float > 0.5, weights[1], weights[0])
+        ce = (ce_map * pixel_weights * valid).sum() / valid.sum().clamp_min(1)
+        dice = dice_loss(logits, target, num_classes=2, ignore_index=self.ignore_index)
+        return ce + dice
 
 
 class LGDNetLoss(nn.Module):
@@ -77,10 +127,7 @@ class LGDNetLoss(nn.Module):
             num_land_classes,
             land_class_weights or DEFAULT_LAND_CLASS_WEIGHTS,
         )
-        self.damage_loss = CombinedSegmentationLoss(
-            2,
-            damage_class_weights or DEFAULT_DAMAGE_CLASS_WEIGHTS,
-        )
+        self.damage_loss = BinaryDamageLoss(damage_class_weights)
 
     def forward(
         self,

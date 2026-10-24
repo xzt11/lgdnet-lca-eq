@@ -25,10 +25,18 @@ model:
   pretrained_backbone: true
   decoder_channels: 448
   transformer_layers: 2
+  transformer_heads: 8
+  transformer_dropout: 0.1
   mamba_decoder: true
+  mamba_state: 16
+  mamba_conv: 4
+  mamba_expansion: 2
   use_lsgm: true
   host_class_ids: [0, 1, 2]
   non_host_class_ids: [3, 4, 5, 6]
+  lsgm_embedding_channels: 224
+  lsgm_rho: 0.9
+  lsgm_eps: 0.000001
 
 paper_reported_efficiency:
   parameters_m: 60.67
@@ -39,7 +47,7 @@ paper_reported_efficiency:
 loss:
   damage_weight: 1.0
   land_weight: 0.5
-  damage_class_weights: [0.5049, 51.2585]
+  damage_class_weights: [0.5054, 46.6519]
   land_class_weights: [1.6963, 2.5613, 1.6376, 0.4630, 2.1080, 0.8263, 0.6390]
 
 optimizer:
@@ -65,11 +73,10 @@ augmentation:
 train:
   epochs: 30
   batch_size: 8
-  val_batch_size: 8
-  patience: 15
+  val_batch_size: 1
   num_workers: 4
   output_dir: outputs/lgdnet_lca_eq
   monitor: val_combined_F1
 
 eval:
-  damage_threshold: 0.75
+  damage_threshold: null

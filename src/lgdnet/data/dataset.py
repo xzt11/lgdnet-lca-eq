@@ -73,14 +73,28 @@ class LCAEQDataset(Dataset):
         row = self.rows[index]
         image = self._read_rgb(row["image"])
         land = self._read_mask(row["land_mask"]).long()
+        if image.shape[-2:] != land.shape[-2:]:
+            raise ValueError(
+                f"Image/land-mask shape mismatch for {row['image']}: "
+                f"{tuple(image.shape[-2:])} vs {tuple(land.shape[-2:])}"
+            )
         if self.remap_land_labels:
             land = self._remap_land_mask(land)
 
         damage_rel = row.get("damage_mask", "")
         if damage_rel:
             damage = self._read_mask(damage_rel).long()
+            if damage.shape != land.shape:
+                raise ValueError(
+                    f"Land/damage-mask shape mismatch for {row['image']}: "
+                    f"{tuple(land.shape)} vs {tuple(damage.shape)}"
+                )
+            # AOI-exterior/background pixels are ignored for both tasks,
+            # regardless of how the released binary damage PNG encodes them.
+            damage = damage.masked_fill(land == 255, 255)
         elif row.get("event", "") in self.hard_negative_events:
             damage = torch.zeros_like(land)
+            damage = damage.masked_fill(land == 255, 255)
         else:
             damage = torch.full_like(land, 255)
 
