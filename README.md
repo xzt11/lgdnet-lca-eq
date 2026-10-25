@@ -103,7 +103,7 @@ Transformer bottleneck (448-dimensional tokens and 4x feed-forward width), and
 an FPN decoder with three Mamba refinement blocks on the stride-16/8/4 top-down
 features. The shared decoded feature feeds separate seven-class land-cover and
 damage-feature branches. LSGM modulates the damage feature, which is then passed
-to a one-logit sigmoid damage classifier. The land-cover logits are upsampled
+to a two-logit Softmax damage classifier. The land-cover logits are upsampled
 before LSGM; its grouped probabilities are bilinearly resized to the damage
 feature grid. The configured LSGM projection maps 448 damage channels to a
 224-dimensional embedding (`C'`).
@@ -116,8 +116,9 @@ from the stride-16/8/4 stages, bilinear top-down addition, and one Mamba block
 at each of those three resolutions; two 3x3 Conv-BN-SiLU layers refine the
 stride-4 output. Each task branch begins with a 3x3 Conv-BN-SiLU and Dropout2d
 (0.1). The semantic branch ends in a 1x1 seven-class classifier. The damage
-branch passes its 448-channel feature through LSGM and then a 1x1 one-logit
-classifier. Each Mamba block uses pre-LayerNorm, `d_state=16`, `d_conv=4`,
+branch passes its 448-channel feature through LSGM and then a 1x1 two-logit
+classifier for undamaged/damaged pixels. The damaged-class Softmax probability
+is thresholded after upsampling. Each Mamba block uses pre-LayerNorm, `d_state=16`, `d_conv=4`,
 expansion 2, and a learnable residual scale initialized to zero.
 
 `MambaDecoderBlock` uses a selective state-space Mamba mixer over flattened
@@ -179,19 +180,19 @@ augmentation: scale jittering 0.75-1.25, horizontal/vertical flipping,
 loss: L = 1.0 * L_damage + 0.5 * L_land
 L_land: weighted cross-entropy + Dice
 L_damage: weighted cross-entropy + Dice
-damage output: one logit; sigmoid probability; two-class Dice includes both
-              undamaged and damaged classes
+damage output: two logits; damaged-class Softmax probability is thresholded;
+              two-class Dice includes both undamaged and damaged classes
 monitor: val_combined_F1
 ```
 
-The released configuration stores the training-set inverse-frequency weights
-for both tasks, computed as $w_c=N/(C n_c)$ from valid training pixels only.
-With the current AOI-aware masking, the values are land-cover
-`[1.6963, 2.5613, 1.6376, 0.4630, 2.1080, 0.8263, 0.6390]` and damage
-`[0.5054, 46.6519]` (undamaged, damaged).
-The configured seed is 42 for this executable reference run; it is not verified
-as the seed used by every historical result. The training script uses FP32
-(no autocast); mixed-precision use in historical runs has not been verified.
+The released configuration computes training-set inverse-frequency weights
+for both tasks as $w_c=N/(C n_c)$ over valid pixels in `train_manifest`; it
+prints and stores the resulting values in each checkpoint. These values are
+reproducible for the supplied masks and split, but are not asserted to recover
+the unavailable numerical weights used in the historical run. The configured
+seed is 42 for this executable reference run; it is not verified as the seed
+used by every historical result. The training script uses FP32 (no autocast);
+mixed-precision use in historical runs has not been verified.
 Weighted cross-entropy is summed over valid pixels and divided
 by the valid-pixel count; Dice uses epsilon `1e-6`, averages over all classes
 (including the undamaged class), and excludes ignore label `255`. For damage,
@@ -228,7 +229,7 @@ python scripts/compute_lca_eq_class_weights.py --root data/lca_eq
 
 ## Checkpoint
 
-Historical checkpoint record:
+Historical checkpoint metadata (not independently supported by original run logs):
 
 ```text
 best epoch: 28
@@ -238,12 +239,17 @@ SHA256: 754a9d0c7a259c37e4b832dacafae2df72b72693f97707a2c3a101c779530ea9
 ```
 
 The checkpoint is provided through the Zenodo model record above rather than
-stored directly in Git. The archived checkpoint predates the single-logit
-damage-head correction and is not strictly compatible with the current
-manuscript-aligned implementation. The evaluator intentionally uses strict
-checkpoint loading and will reject incompatible weights instead of silently
-ignoring missing or mismatched parameters. The historical scores and checkpoint
-lineage therefore remain distinct from results produced by this code snapshot.
+stored directly in Git. Its compatibility with this two-logit manuscript-aligned
+implementation has not been verified here; the evaluator uses strict loading
+and will reject incompatible weights rather than silently ignoring mismatched
+parameters. The epoch, validation score, threshold, and SHA above are archival
+metadata, not values independently recovered from the original run logs.
+
+## Reproducibility record for reviewer C10
+
+See [`docs/C10_REPRODUCIBILITY.md`](docs/C10_REPRODUCIBILITY.md) for the full
+architecture and training specification, executable commands, and an explicit
+account of details that remain unavailable for the historical experiments.
 
 ## Repository layout
 

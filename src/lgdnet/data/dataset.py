@@ -25,6 +25,46 @@ PAPER_LAND_LABEL_MAPPING = {
 }
 
 
+def inverse_frequency_class_weights(counts: torch.Tensor) -> torch.Tensor:
+    """Return the paper's ``N / (C * n_c)`` weights from valid pixel counts."""
+    if counts.ndim != 1 or torch.any(counts <= 0):
+        raise ValueError("Every class must have a positive valid-pixel count")
+    counts = counts.to(torch.float64)
+    return (counts.sum() / (counts.numel() * counts)).to(torch.float32)
+
+
+def compute_training_class_weights(
+    dataset: "LCAEQDataset", num_land_classes: int = 7
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Count valid remapped labels over the unaugmented training manifest."""
+    land_counts = torch.zeros(num_land_classes, dtype=torch.int64)
+    damage_counts = torch.zeros(2, dtype=torch.int64)
+    for row in dataset.rows:
+        land = torch.from_numpy(
+            np.array(Image.open(dataset._resolve(row["land_mask"])).convert("L"), dtype=np.int64)
+        )
+        if dataset.remap_land_labels:
+            land = dataset._remap_land_mask(land)
+        valid_land = land != 255
+        for class_id in range(num_land_classes):
+            land_counts[class_id] += (land == class_id).sum()
+
+        damage_path = row.get("damage_mask", "").strip()
+        if damage_path:
+            damage = torch.from_numpy(
+                np.array(Image.open(dataset._resolve(damage_path)).convert("L"), dtype=np.int64)
+            )
+            if damage.shape != land.shape:
+                raise ValueError(f"Land/damage mask shape mismatch for {row['image']}")
+            valid_damage = valid_land & ((damage == 0) | (damage == 1))
+            for class_id in range(2):
+                damage_counts[class_id] += ((damage == class_id) & valid_damage).sum()
+        elif row.get("event", "") in dataset.hard_negative_events:
+            damage_counts[0] += valid_land.sum()
+
+    return inverse_frequency_class_weights(land_counts), inverse_frequency_class_weights(damage_counts)
+
+
 class LCAEQDataset(Dataset):
     """Load post-event RGB patches, seven-class land labels, and damage masks.
 

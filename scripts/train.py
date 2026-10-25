@@ -14,7 +14,7 @@ import torch
 import yaml
 from torch.utils.data import DataLoader
 
-from lgdnet.data import LCAEQDataset
+from lgdnet.data import LCAEQDataset, compute_training_class_weights
 from lgdnet.losses import LGDNetLoss
 from lgdnet.metrics import confusion_matrix, f1_from_confusion, iou_from_confusion
 from lgdnet.models import LGDNet
@@ -143,7 +143,7 @@ def evaluate(
         batches += 1
 
         land_pred = outputs["land_logits"].argmax(dim=1).cpu()
-        damage_prob = torch.sigmoid(outputs["damage_logits"][:, 0])
+        damage_prob = torch.softmax(outputs["damage_logits"], dim=1)[:, 1]
         land_cpu = land.cpu()
         damage_cpu = damage.cpu()
         land_cm += confusion_matrix(land_pred, land_cpu, num_land_classes)
@@ -197,13 +197,21 @@ def evaluate(
     }
 
 
-def save_checkpoint(path: Path, model: LGDNet, optimizer: torch.optim.Optimizer, epoch: int, metrics: dict) -> None:
+def save_checkpoint(
+    path: Path,
+    model: LGDNet,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    metrics: dict,
+    class_weights: dict[str, list[float]],
+) -> None:
     torch.save(
         {
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "metrics": metrics,
+            "class_weights": class_weights,
         },
         path,
     )
@@ -260,12 +268,24 @@ def main() -> None:
         lsgm_eps=config["model"].get("lsgm_eps", 1e-6),
     ).to(device)
 
+    land_weights = config["loss"].get("land_class_weights")
+    damage_weights = config["loss"].get("damage_class_weights")
+    if land_weights is None or damage_weights is None:
+        computed_land, computed_damage = compute_training_class_weights(
+            train_data, num_land_classes=config["data"]["num_land_classes"]
+        )
+        land_weights = land_weights or computed_land.tolist()
+        damage_weights = damage_weights or computed_damage.tolist()
+        print(f"training_land_class_weights={land_weights}")
+        print(f"training_damage_class_weights={damage_weights}")
+
     criterion = LGDNetLoss(
         damage_weight=config["loss"]["damage_weight"],
         land_weight=config["loss"]["land_weight"],
-        damage_class_weights=config["loss"].get("damage_class_weights"),
-        land_class_weights=config["loss"].get("land_class_weights"),
+        damage_class_weights=damage_weights,
+        land_class_weights=land_weights,
         num_land_classes=config["data"]["num_land_classes"],
+        dice_eps=config["loss"].get("dice_eps", 1e-6),
     )
     base_optimizer = torch.optim.AdamW(parameter_groups(model, config))
     optimizer = Lookahead(
@@ -318,10 +338,11 @@ def main() -> None:
         with history_path.open("a", encoding="utf-8") as history_file:
             history_file.write(json.dumps({"epoch": epoch, "train_loss": train_loss, **val_metrics}) + "\n")
 
-        save_checkpoint(output_dir / "last.ckpt", model, base_optimizer, epoch, val_metrics)
+        saved_weights = {"land": land_weights, "damage": damage_weights}
+        save_checkpoint(output_dir / "last.ckpt", model, base_optimizer, epoch, val_metrics, saved_weights)
         if score > best_score:
             best_score = score
-            save_checkpoint(output_dir / "best.ckpt", model, base_optimizer, epoch, val_metrics)
+            save_checkpoint(output_dir / "best.ckpt", model, base_optimizer, epoch, val_metrics, saved_weights)
 
 
 if __name__ == "__main__":

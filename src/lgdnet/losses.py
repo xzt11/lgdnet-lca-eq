@@ -7,10 +7,6 @@ from torch import nn
 from torch.nn import functional as F
 
 
-DEFAULT_LAND_CLASS_WEIGHTS = [1.6963, 2.5613, 1.6376, 0.4630, 2.1080, 0.8263, 0.6390]
-DEFAULT_DAMAGE_CLASS_WEIGHTS = [0.5054, 46.6519]
-
-
 def dice_loss(
     logits: torch.Tensor,
     target: torch.Tensor,
@@ -24,11 +20,11 @@ def dice_loss(
     if torch.any((target[valid] < 0) | (target[valid] >= num_classes)):
         raise ValueError(f"Target contains labels outside [0, {num_classes - 1}] and ignore={ignore_index}")
 
-    if logits.shape[1] == 1 and num_classes == 2:
-        positive = torch.sigmoid(logits[:, 0])
-        probs = torch.stack((1.0 - positive, positive), dim=1)
-    else:
-        probs = F.softmax(logits, dim=1)
+    if logits.ndim != 4 or logits.shape[1] != num_classes:
+        raise ValueError(
+            f"Expected logits [B,{num_classes},H,W], got {tuple(logits.shape)}"
+        )
+    probs = F.softmax(logits, dim=1)
     safe_target = target.masked_fill(~valid, 0)
     target_one_hot = F.one_hot(safe_target.long(), num_classes=num_classes).permute(0, 3, 1, 2).float()
     valid = valid.unsqueeze(1)
@@ -48,10 +44,12 @@ class CombinedSegmentationLoss(nn.Module):
         num_classes: int,
         class_weights: list[float] | None = None,
         ignore_index: int = 255,
+        dice_eps: float = 1e-6,
     ) -> None:
         super().__init__()
         self.num_classes = num_classes
         self.ignore_index = ignore_index
+        self.dice_eps = dice_eps
         self.register_buffer(
             "class_weights",
             torch.tensor(class_weights, dtype=torch.float32) if class_weights is not None else None,
@@ -73,39 +71,49 @@ class CombinedSegmentationLoss(nn.Module):
             logits, target.long(), weight=weights, ignore_index=self.ignore_index, reduction="none"
         )
         ce = ce_map[valid].sum() / valid.sum().clamp_min(1)
-        return ce + dice_loss(logits, target, self.num_classes, ignore_index=self.ignore_index)
+        return ce + dice_loss(
+            logits, target, self.num_classes, ignore_index=self.ignore_index, eps=self.dice_eps
+        )
 
 
 class BinaryDamageLoss(nn.Module):
-    """Weighted CE + two-class Dice for the manuscript's single damage logit."""
+    """Weighted two-class cross-entropy + Dice for the damage logits."""
 
     def __init__(
         self,
         class_weights: list[float] | None = None,
         ignore_index: int = 255,
+        dice_eps: float = 1e-6,
     ) -> None:
         super().__init__()
         self.ignore_index = ignore_index
-        weights = class_weights or DEFAULT_DAMAGE_CLASS_WEIGHTS
+        self.dice_eps = dice_eps
+        weights = class_weights or [1.0, 1.0]
         if len(weights) != 2:
             raise ValueError("Damage class_weights must contain [undamaged, damaged] weights")
         self.register_buffer("class_weights", torch.tensor(weights, dtype=torch.float32))
 
     def forward(self, logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        if logits.ndim != 4 or logits.shape[1] != 1:
-            raise ValueError(f"Expected damage logits [B,1,H,W], got {tuple(logits.shape)}")
+        if logits.ndim != 4 or logits.shape[1] != 2:
+            raise ValueError(f"Expected damage logits [B,2,H,W], got {tuple(logits.shape)}")
         valid = target != self.ignore_index
         if not torch.any(valid):
             return logits.sum() * 0.0
         if torch.any((target[valid] < 0) | (target[valid] > 1)):
             raise ValueError("Damage targets must be binary 0/1 or the configured ignore label")
 
-        target_float = target.clamp(0, 1).to(dtype=logits.dtype)
-        ce_map = F.binary_cross_entropy_with_logits(logits[:, 0], target_float, reduction="none")
         weights = self.class_weights.to(device=logits.device, dtype=logits.dtype)
-        pixel_weights = torch.where(target_float > 0.5, weights[1], weights[0])
-        ce = (ce_map * pixel_weights * valid).sum() / valid.sum().clamp_min(1)
-        dice = dice_loss(logits, target, num_classes=2, ignore_index=self.ignore_index)
+        ce_map = F.cross_entropy(
+            logits,
+            target.long(),
+            weight=weights,
+            ignore_index=self.ignore_index,
+            reduction="none",
+        )
+        ce = ce_map[valid].sum() / valid.sum().clamp_min(1)
+        dice = dice_loss(
+            logits, target, num_classes=2, ignore_index=self.ignore_index, eps=self.dice_eps
+        )
         return ce + dice
 
 
@@ -119,15 +127,17 @@ class LGDNetLoss(nn.Module):
         damage_class_weights: list[float] | None = None,
         land_class_weights: list[float] | None = None,
         num_land_classes: int = 7,
+        dice_eps: float = 1e-6,
     ) -> None:
         super().__init__()
         self.damage_weight = damage_weight
         self.land_weight = land_weight
         self.land_loss = CombinedSegmentationLoss(
             num_land_classes,
-            land_class_weights or DEFAULT_LAND_CLASS_WEIGHTS,
+            land_class_weights or [1.0] * num_land_classes,
+            dice_eps=dice_eps,
         )
-        self.damage_loss = BinaryDamageLoss(damage_class_weights)
+        self.damage_loss = BinaryDamageLoss(damage_class_weights, dice_eps=dice_eps)
 
     def forward(
         self,

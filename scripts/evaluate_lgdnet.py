@@ -42,8 +42,8 @@ def load_checkpoint(model: torch.nn.Module, checkpoint: Path) -> None:
         while name.startswith("module.") or name.startswith("model."):
             name = name.split(".", 1)[1]
         cleaned[name] = value
-    # Strict loading prevents silently evaluating a checkpoint from a different
-    # architecture (in particular, the former two-channel damage head).
+    # Strict loading prevents silently evaluating checkpoints with a different
+    # architecture or damage-head channel count.
     model.load_state_dict(cleaned, strict=True)
 
 
@@ -81,7 +81,7 @@ def collect_split(
         land_pred = outputs["land_logits"].argmax(dim=1).cpu()
         land_cm += confusion_matrix(land_pred, land, num_land_classes)
 
-        damage_prob = torch.sigmoid(outputs["damage_logits"][:, 0])
+        damage_prob = torch.softmax(outputs["damage_logits"], dim=1)[:, 1]
         valid = damage != 255
         if valid.any():
             valid_target = damage[valid]

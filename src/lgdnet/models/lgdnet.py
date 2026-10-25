@@ -309,8 +309,8 @@ class TaskHeads(nn.Module):
             ConvBNAct(channels, channels),
             nn.Dropout2d(dropout),
         )
-        # The manuscript defines one damage logit per pixel with sigmoid output.
-        self.damage_classifier = nn.Conv2d(channels, 1, kernel_size=1)
+        # Two classes: undamaged (0) and damaged (1), normalized by Softmax.
+        self.damage_classifier = nn.Conv2d(channels, 2, kernel_size=1)
 
     def forward_land(self, features: torch.Tensor) -> torch.Tensor:
         return self.land_branch(features)

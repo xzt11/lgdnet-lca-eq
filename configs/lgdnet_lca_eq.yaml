@@ -47,8 +47,11 @@ paper_reported_efficiency:
 loss:
   damage_weight: 1.0
   land_weight: 0.5
-  damage_class_weights: [0.5054, 46.6519]
-  land_class_weights: [1.6963, 2.5613, 1.6376, 0.4630, 2.1080, 0.8263, 0.6390]
+  # Null computes N / (C * n_c) weights from valid pixels in train_manifest.
+  # This is a reproducible release recipe, not a claim to recover historical weights.
+  damage_class_weights: null
+  land_class_weights: null
+  dice_eps: 0.000001
 
 optimizer:
   name: AdamW-Lookahead

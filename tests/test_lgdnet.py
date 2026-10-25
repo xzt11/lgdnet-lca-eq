@@ -1,7 +1,7 @@
 import torch
 from PIL import Image
 
-from lgdnet.data import LCAEQDataset
+from lgdnet.data import LCAEQDataset, compute_training_class_weights
 from lgdnet.losses import LGDNetLoss
 from lgdnet.metrics import confusion_matrix
 from lgdnet.models import LGDNet, LandSemanticsGatingModule
@@ -11,7 +11,7 @@ def test_lgdnet_forward_shapes():
     model = LGDNet(num_land_classes=7, decoder_channels=32, pretrained_backbone=False)
     outputs = model(torch.randn(2, 3, 64, 64))
     assert outputs["land_logits"].shape == (2, 7, 64, 64)
-    assert outputs["damage_logits"].shape == (2, 1, 64, 64)
+    assert outputs["damage_logits"].shape == (2, 2, 64, 64)
     assert set(outputs) == {"land_logits", "damage_logits"}
 
 
@@ -51,11 +51,11 @@ def test_two_task_loss_runs():
     assert set(losses) == {"total", "land", "damage"}
 
 
-def test_single_logit_damage_loss_includes_both_dice_classes_and_ignores_255():
+def test_two_logit_damage_loss_includes_both_dice_classes_and_ignores_255():
     model = LGDNet(num_land_classes=7, decoder_channels=32, pretrained_backbone=False)
     criterion = LGDNetLoss()
     outputs = model(torch.randn(1, 3, 64, 64))
-    assert outputs["damage_logits"].shape[1] == 1
+    assert outputs["damage_logits"].shape[1] == 2
     land = torch.zeros((1, 64, 64), dtype=torch.long)
     damage = torch.zeros((1, 64, 64), dtype=torch.long)
     damage[:, :8, :8] = 1
@@ -64,6 +64,33 @@ def test_single_logit_damage_loss_includes_both_dice_classes_and_ignores_255():
     assert torch.isfinite(losses["damage"])
     losses["total"].backward()
     assert model.heads.damage_classifier.weight.grad is not None
+
+
+def test_training_class_weights_use_only_valid_remapped_pixels(tmp_path):
+    event_dir = tmp_path / "event"
+    image_dir = event_dir / "images"
+    land_dir = event_dir / "land_masks"
+    damage_dir = event_dir / "damage_masks"
+    for directory in (image_dir, land_dir, damage_dir):
+        directory.mkdir(parents=True)
+    Image.new("RGB", (4, 2), color=(10, 20, 30)).save(image_dir / "sample.png")
+    # Raw 3 -> Building (class 0); raw 1 -> Road (class 1); raw 0 -> ignore.
+    land = torch.tensor([[3, 3, 1, 1], [0, 0, 0, 0]], dtype=torch.uint8)
+    Image.fromarray(land.numpy()).save(land_dir / "sample.png")
+    damage = torch.tensor([[0, 1, 0, 1], [1, 1, 1, 1]], dtype=torch.uint8)
+    Image.fromarray(damage.numpy()).save(damage_dir / "sample.png")
+    manifest = tmp_path / "train.csv"
+    manifest.write_text(
+        "image,land_mask,damage_mask,event\n"
+        "event/images/sample.png,event/land_masks/sample.png,event/damage_masks/sample.png,event\n",
+        encoding="utf-8",
+    )
+    dataset = LCAEQDataset(manifest, root=tmp_path, normalize=False)
+    land_weights, damage_weights = compute_training_class_weights(dataset, num_land_classes=2)
+    assert torch.isclose(land_weights[0], torch.tensor(1.0))
+    assert torch.isclose(land_weights[1], torch.tensor(1.0))
+    assert torch.isclose(damage_weights[0], torch.tensor(1.0))
+    assert torch.isclose(damage_weights[1], torch.tensor(1.0))
 
 
 def test_ignore_255_never_enters_confusion_matrix():
