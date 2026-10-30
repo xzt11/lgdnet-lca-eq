@@ -1,0 +1,633 @@
+{
+  "type": "FeatureCollection",
+  "name": "LCA_EQ_AOI_Footprints",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "turkey_2023",
+        "aoi_id": "turkey_2023_aoi_01",
+        "event_name": "Turkey 2023",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "Turkey_post_1.tif",
+        "source_crs": "EPSG:4326",
+        "width_px": 8112,
+        "height_px": 8144,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              36.78214073181152,
+              37.26549625396729
+            ],
+            [
+              36.76038265228271,
+              37.26549625396729
+            ],
+            [
+              36.76038265228271,
+              37.24365234375
+            ],
+            [
+              36.78214073181152,
+              37.24365234375
+            ],
+            [
+              36.78214073181152,
+              37.26549625396729
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "noto_japan_2024",
+        "aoi_id": "noto_japan_2024_aoi_01",
+        "event_name": "Noto Peninsula, Japan 2024",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "noto_post_1.tif",
+        "source_crs": "EPSG:3857",
+        "width_px": 2164,
+        "height_px": 1902,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.09083261385283,
+              37.258069798445405
+            ],
+            [
+              137.081112461593,
+              37.258069798445405
+            ],
+            [
+              137.081112461593,
+              37.251269937005766
+            ],
+            [
+              137.09083261385283,
+              37.251269937005766
+            ],
+            [
+              137.09083261385283,
+              37.258069798445405
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "noto_japan_2024",
+        "aoi_id": "noto_japan_2024_aoi_02",
+        "event_name": "Noto Peninsula, Japan 2024",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "noto_post_2.tif",
+        "source_crs": "EPSG:3857",
+        "width_px": 3766,
+        "height_px": 3318,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              137.27243566338117,
+              37.44556452244419
+            ],
+            [
+              137.25551886573342,
+              37.44556452244419
+            ],
+            [
+              137.25551886573342,
+              37.43373015188006
+            ],
+            [
+              137.27243566338117,
+              37.43373015188006
+            ],
+            [
+              137.27243566338117,
+              37.44556452244419
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "noto_japan_2024",
+        "aoi_id": "noto_japan_2024_aoi_03",
+        "event_name": "Noto Peninsula, Japan 2024",
+        "boundary_basis": "nontransparent_pixel_footprint",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "noto_post_3.tif",
+        "source_crs": "EPSG:3857",
+        "width_px": 6412,
+        "height_px": 5497,
+        "transparent_pixels_excluded": 3281858,
+        "nodata_metadata": "0"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              136.8876378202632,
+              37.40731506524597
+            ],
+            [
+              136.8876378202632,
+              37.39361244227268
+            ],
+            [
+              136.8876378202632,
+              37.39360530483707
+            ],
+            [
+              136.8876378202632,
+              37.390860910476505
+            ],
+            [
+              136.8876378202632,
+              37.390853772778904
+            ],
+            [
+              136.8876378202632,
+              37.38863391585243
+            ],
+            [
+              136.9150630796381,
+              37.38863391585243
+            ],
+            [
+              136.9150630796381,
+              37.390853772778904
+            ],
+            [
+              136.9150630796381,
+              37.390860910476505
+            ],
+            [
+              136.9150630796381,
+              37.39360530483707
+            ],
+            [
+              136.9150630796381,
+              37.39361244227268
+            ],
+            [
+              136.9150630796381,
+              37.40731506524597
+            ],
+            [
+              136.8876378202632,
+              37.40731506524597
+            ]
+          ],
+          [
+            [
+              136.9085324004486,
+              37.39361244227268
+            ],
+            [
+              136.90853689197485,
+              37.39361244227268
+            ],
+            [
+              136.90853689197485,
+              37.39360530483707
+            ],
+            [
+              136.9085324004486,
+              37.39360530483707
+            ],
+            [
+              136.9085324004486,
+              37.39361244227268
+            ]
+          ],
+          [
+            [
+              136.91142943488958,
+              37.390860910476505
+            ],
+            [
+              136.91142943488958,
+              37.390853772778904
+            ],
+            [
+              136.91142494336333,
+              37.390853772778904
+            ],
+            [
+              136.91142494336333,
+              37.390860910476505
+            ],
+            [
+              136.91142943488958,
+              37.390860910476505
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "morocco_2023",
+        "aoi_id": "morocco_2023_aoi_01",
+        "event_name": "Al Haouz, Morocco 2023",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "2023摩洛哥地震post1.tif",
+        "source_crs": "EPSG:4326",
+        "width_px": 7688,
+        "height_px": 3726,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -8.24296675622463,
+              31.2175340205431
+            ],
+            [
+              -8.25327716767788,
+              31.2175340205431
+            ],
+            [
+              -8.25327716767788,
+              31.21253706514835
+            ],
+            [
+              -8.24296675622463,
+              31.21253706514835
+            ],
+            [
+              -8.24296675622463,
+              31.2175340205431
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "morocco_2023",
+        "aoi_id": "morocco_2023_aoi_02",
+        "event_name": "Al Haouz, Morocco 2023",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "2023摩洛哥地震post2.tif",
+        "source_crs": "EPSG:4326",
+        "width_px": 2556,
+        "height_px": 2154,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -8.26455987989902,
+              31.21790416538715
+            ],
+            [
+              -8.27141493558884,
+              31.21790416538715
+            ],
+            [
+              -8.27141493558884,
+              31.21212668716908
+            ],
+            [
+              -8.26455987989902,
+              31.21212668716908
+            ],
+            [
+              -8.26455987989902,
+              31.21790416538715
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "morocco_2023",
+        "aoi_id": "morocco_2023_aoi_03",
+        "event_name": "Al Haouz, Morocco 2023",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "2023摩洛哥地震post3.tif",
+        "source_crs": "EPSG:4326",
+        "width_px": 2396,
+        "height_px": 2121,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -8.2197093218565,
+              31.19907572865486
+            ],
+            [
+              -8.22613589465618,
+              31.19907572865486
+            ],
+            [
+              -8.22613589465618,
+              31.19338676333427
+            ],
+            [
+              -8.2197093218565,
+              31.19338676333427
+            ],
+            [
+              -8.2197093218565,
+              31.19907572865486
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "myanmar_2025",
+        "aoi_id": "myanmar_2025_aoi_01",
+        "event_name": "Mandalay, Myanmar 2025",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "曼德勒post.tif",
+        "source_crs": "EPSG:4326",
+        "width_px": 2826,
+        "height_px": 2166,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              96.10569655416744,
+              21.97001846818358
+            ],
+            [
+              96.09811862565492,
+              21.97001846818358
+            ],
+            [
+              96.09811862565492,
+              21.96420934362361
+            ],
+            [
+              96.10569655416744,
+              21.96420934362361
+            ],
+            [
+              96.10569655416744,
+              21.97001846818358
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "yunnan_2021",
+        "aoi_id": "yunnan_2021_aoi_01",
+        "event_name": "Yangbi, Yunnan 2021",
+        "boundary_basis": "previously_verified_raster_extent_alpha_mask_not_reconstructed",
+        "aoi_status": "source_extent_only_not_final_annotation_boundary",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "yunnan_post.tif",
+        "source_crs": "EPSG:3857",
+        "width_px": 1526,
+        "height_px": 972,
+        "transparent_pixels_excluded": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              99.96612577186181,
+              25.664868878030436
+            ],
+            [
+              99.96612577186181,
+              25.668804720871005
+            ],
+            [
+              99.95927121301894,
+              25.668804720871005
+            ],
+            [
+              99.95927121301894,
+              25.664868878030436
+            ],
+            [
+              99.96612577186181,
+              25.664868878030436
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "puerto_rico_2020",
+        "aoi_id": "puerto_rico_2020_aoi_01",
+        "event_name": "Puerto Rico 2020",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "pu_post.tif",
+        "source_crs": "EPSG:4326",
+        "width_px": 2625,
+        "height_px": 1702,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -66.89950103008485,
+              17.9737436818501
+            ],
+            [
+              -66.91358213780535,
+              17.9737436818501
+            ],
+            [
+              -66.91358213780535,
+              17.96461750611025
+            ],
+            [
+              -66.89950103008485,
+              17.96461750611025
+            ],
+            [
+              -66.89950103008485,
+              17.9737436818501
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "haiti_2021",
+        "aoi_id": "haiti_2021_aoi_01",
+        "event_name": "Haiti 2021",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "event_label_from_existing_dataset",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "hati_post.tif",
+        "source_crs": "EPSG:4326",
+        "width_px": 3001,
+        "height_px": 1934,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -73.750159769767,
+              18.20339688989397
+            ],
+            [
+              -73.75820773866819,
+              18.20339688989397
+            ],
+            [
+              -73.75820773866819,
+              18.19820882422731
+            ],
+            [
+              -73.750159769767,
+              18.19820882422731
+            ],
+            [
+              -73.750159769767,
+              18.20339688989397
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "event_id": "sulawesi_event_unverified",
+        "aoi_id": "sulawesi_event_unverified_aoi_01",
+        "event_name": "Sulawesi, Palu area (event year unverified)",
+        "boundary_basis": "georeferenced_raster_extent",
+        "aoi_status": "source_footprint_candidate_not_verified_against_final_labels",
+        "event_identity_status": "unverified_year_and_disaster_association",
+        "image_date": null,
+        "image_source": null,
+        "source_filename": "Indonesia_post.tif",
+        "source_crs": "EPSG:4326",
+        "width_px": 4092,
+        "height_px": 2064,
+        "transparent_pixels_excluded": 0,
+        "nodata_metadata": null
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              119.87183690071106,
+              -0.8843457698822
+            ],
+            [
+              119.86086130142212,
+              -0.8843457698822
+            ],
+            [
+              119.86086130142212,
+              -0.88988184928894
+            ],
+            [
+              119.87183690071106,
+              -0.88988184928894
+            ],
+            [
+              119.87183690071106,
+              -0.8843457698822
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
