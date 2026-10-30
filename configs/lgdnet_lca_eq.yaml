@@ -16,8 +16,6 @@ data:
   num_land_classes: 7
   ignore_index: 255
   remap_land_labels: true
-  hard_negative_events:
-    - southwest_puerto_rico_2020
 
 model:
   name: LGDNet

@@ -81,10 +81,10 @@ and are excluded from land-cover loss and evaluation. Damage masks are binary.
 Samples without visible-damage masks use damage label `255` and are ignored for
 damage supervision.
 
-`southwest_puerto_rico_2020` is the hard-negative event used in the paper: it
-contains no positive visible-damage labels, and missing damage masks for this
-event are loaded as valid all-zero masks so that the patches contribute to
-damage supervision.
+`southwest_puerto_rico_2020` is the hard-negative event used in the paper. Its
+445 explicit damage masks contain `0` on valid land-cover pixels and `255` on
+background/outside-AOI pixels; the train manifest links these files so the
+patches contribute directly as valid all-zero damage negatives.
 
 If released masks store background as `0` and foreground categories as `1..7`,
 `LCAEQDataset` remaps them to the paper label order above and converts
@@ -139,12 +139,10 @@ FLOPs:      505.95 G
 FPS:        9.93
 ```
 
-These are historical manuscript values; the original profiler outputs and
-timing script have not been recovered. Counting trainable and non-trainable
-parameters in the current public model definition gives 60.30 M, so it does
-not exactly reproduce the reported 60.67 M. FLOPs and FPS have not been
-independently measured for this source snapshot. The YAML records the paper
-values as reported metadata, not as a measurement of the current code.
+These are historical manuscript-reported values, retained here as reported
+metadata. The original profiler outputs and timing script are unavailable, so
+the current public code snapshot has not been independently profiled to verify
+that it reproduces the manuscript's parameter, FLOPs, and FPS figures.
 
 The Land-Semantics Gating Module (LSGM) groups land-cover probabilities into
 support classes (`Buildings`, `Roads`, `Impervious surface`) and non-support
@@ -196,11 +194,12 @@ mixed-precision use in historical runs has not been verified.
 Weighted cross-entropy is summed over valid pixels and divided
 by the valid-pixel count; Dice uses epsilon `1e-6`, averages over all classes
 (including the undamaged class), and excludes ignore label `255`. For damage,
-missing-mask Puerto Rico samples are valid all-zero negatives as described in
-the dataset section. At each validation pass, a pooled damage-F1 threshold is
-selected on a 0.001 grid; that validation-selected threshold is saved with the
-checkpoint and must remain fixed for test evaluation. The test split is never
-used for threshold calibration.
+the Puerto Rico hard-negative masks are explicitly included in the release and
+train manifest as described in the dataset section. At each validation pass, a
+pooled damage-F1 threshold is selected on a 0.001 grid; that
+validation-selected threshold is saved with the checkpoint and must remain
+fixed for test evaluation. The test split is never used for threshold
+calibration.
 
 Run training:
 
