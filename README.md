@@ -10,7 +10,8 @@ This repository provides the code and release assets described in the paper:
 - two-task loss implementation for land-cover and damage supervision
 - preprocessing and evaluation scripts
 - LCA-EQ labels, AOI metadata, event metadata, and the paper event-level split
-- links to the full LCA-EQ image archive and the best checkpoint on Zenodo
+- source-specific dataset access and licensing information
+- link to the best checkpoint on Zenodo
 
 ## Environment
 
@@ -36,13 +37,23 @@ The GitHub repository contains lightweight LCA-EQ release assets under:
 data/lca_eq/
 ```
 
-The full image archive and trained checkpoint are archived on Zenodo and should
-be used for full reproduction:
+The trained checkpoint is archived on Zenodo:
 
 ```text
-Dataset DOI: https://doi.org/10.5281/zenodo.21472884
-Model DOI:   https://doi.org/10.5281/zenodo.21479452
+Dataset DOI (LCA-EQ v1.1): https://doi.org/10.5281/zenodo.23934838
+Dataset concept DOI:        https://doi.org/10.5281/zenodo.21472883
+Model DOI:                  https://doi.org/10.5281/zenodo.21479452
 ```
+
+Zenodo v1.1 retains the original v1.0 image archive and adds a supplement with
+445 explicit Southwest Puerto Rico all-negative damage masks, so all 6,683
+patches have a damage-mask file. Follow the Zenodo v1.1 `README_v1.1.md` and
+`README_REASSEMBLE_DATASET_v1.1.txt` instructions to reconstruct the dataset.
+The earlier v1.0 record remains an immutable historical version. The v1.1
+record's Zenodo rights field is `Other (Non-Commercial)`; its description and
+`LICENSE_DATA.md` distinguish author-created data, eligible Maxar assets, and
+the separately permitted Google Earth imagery. Neither the GitHub MIT license
+nor the CC BY-NC 4.0 terms relicense Google Earth pixels.
 
 Expected LCA-EQ layout after restoring the full dataset:
 
@@ -76,15 +87,40 @@ Land-cover classes used for loss and evaluation:
 | 5 | Water |
 | 6 | Other |
 
-Background pixels outside annotated AOIs are encoded as `255` after preprocessing
-and are excluded from land-cover loss and evaluation. Damage masks are binary.
-Samples without visible-damage masks use damage label `255` and are ignored for
-damage supervision.
+The PNG masks use a source encoding that differs from the model's seven-class
+order. The loader performs this mapping:
 
-`southwest_puerto_rico_2020` is the hard-negative event used in the paper. Its
-445 explicit damage masks contain `0` on valid land-cover pixels and `255` on
-background/outside-AOI pixels; the train manifest links these files so the
-patches contribute directly as valid all-zero damage negatives.
+| Raw land-mask ID | Source class | Model ID |
+| --- | --- | --- |
+| 0 | Background / outside AOI | 255 (ignore) |
+| 1 | Road | 1 |
+| 2 | Farmland | 4 |
+| 3 | Building | 0 |
+| 4 | Forest | 3 |
+| 5 | Impervious surface | 2 |
+| 6 | Other | 6 |
+| 7 | Water | 5 |
+
+Damage masks encode `0` as no visible damage, `1` as visible damage, and `255`
+as ignore where applicable. The original annotation masks are retained without
+post-hoc relabeling. The training loader additionally ignores damage pixels
+outside the annotated AOI by applying the land-mask validity region.
+
+The 445 Southwest Puerto Rico training patches now each have an explicit
+all-negative damage mask: valid AOI pixels are `0`, and pixels outside the AOI
+are `255`. These files are included in `data/lca_eq/southwest_puerto_rico_2020/
+damage_masks/` and are linked from the training manifest.
+
+The paper defines Building, Road, and Impervious Surface as damage-support
+classes. The released source labels are preserved as annotated rather than
+rewritten in preprocessing; users should use the label version and evaluation
+protocol associated with the reported paper results. The loader does not
+silently change positive damage labels based on land-cover predictions.
+
+The training config uses the seven-class paper order and LSGM support IDs
+`[0, 1, 2]` (Building, Road, Impervious Surface); the four remaining classes
+are non-support. This semantic grouping guides the model; the loader does not
+rewrite the original damage annotation mask based on land-cover labels.
 
 If released masks store background as `0` and foreground categories as `1..7`,
 `LCAEQDataset` remaps them to the paper label order above and converts
@@ -243,6 +279,24 @@ implementation has not been verified here; the evaluator uses strict loading
 and will reject incompatible weights rather than silently ignoring mismatched
 parameters. The epoch, validation score, threshold, and SHA above are archival
 metadata, not values independently recovered from the original run logs.
+The exact training-label archive used for that historical checkpoint is not
+independently verified. Treat the checkpoint metrics as historical reported
+metadata, not as a fresh evaluation on a newly assembled dataset package.
+
+## Data licensing and provenance
+
+The root `LICENSE` applies to LGDNet source code only; it does not license
+third-party imagery. Seven event sources are described in the manuscript as
+Maxar Open Data Program imagery. CC BY-NC 4.0 applies only to source assets
+covered by that program and is subject to its attribution and other terms.
+Yangbi imagery was accessed through Google Earth historical imagery; its RGB
+pixels are not redistributed in this GitHub repository, and the code license
+does not grant rights to obtain or redistribute them. See
+[`data/lca_eq/LICENSE_DATA.md`](data/lca_eq/LICENSE_DATA.md) for the component-
+specific terms and attribution guidance. Zenodo v1.1 uses a source-specific
+rights statement: CC BY-NC 4.0 for author-created data and eligible Maxar
+assets, with Google Earth imagery included under separate author-obtained
+permission and still subject to the applicable source terms.
 
 ## Reproducibility record for reviewer C10
 

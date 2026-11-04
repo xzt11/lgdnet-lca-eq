@@ -1,0 +1,41 @@
+{
+  "name": "LCA-EQ",
+  "label_revision": "original paper annotation masks; no support-class post-filtering",
+  "patch_size": "1024 x 1024",
+  "input": "post-event RGB imagery; source-specific redistribution conditions apply",
+  "land_cover_classes": {
+    "0": "Buildings",
+    "1": "Roads",
+    "2": "Impervious surface",
+    "3": "Forest",
+    "4": "Farmland",
+    "5": "Water",
+    "6": "Other"
+  },
+  "damage_classes": {
+    "0": "No visible damage",
+    "1": "Visible damage",
+    "255": "Ignore"
+  },
+  "total_patches": 6683,
+  "zenodo_dataset_version": "1.1",
+  "zenodo_dataset_doi": "10.5281/zenodo.23934838",
+  "license_note": "The root MIT license covers code only. Author-created data use CC BY-NC 4.0; Google Earth imagery included in Zenodo is covered by separate author-obtained permission and remains subject to source terms.",
+  "split_rows": {
+    "train": 5490,
+    "validation": 353,
+    "test": 840
+  },
+  "southwest_puerto_rico_2020": {
+    "patches": 445,
+    "land_masks": 445,
+    "damage_masks": 445,
+    "damage_label": "all valid AOI pixels are 0; pixels outside the AOI are 255"
+  },
+  "imagery_provenance": {
+    "seven_events": "Maxar Open Data Program imagery; CC BY-NC 4.0 applies only to source assets covered by the program license",
+    "yangbi_china_2021": "Google Earth historical imagery; RGB pixels are not redistributed in this GitHub repository"
+  },
+  "code_license": "MIT; source code only",
+  "data_rights_note": "See LICENSE_DATA.md. This metadata does not grant rights to third-party imagery."
+}
