@@ -40,6 +40,34 @@ def test_lsgm_uses_paper_bounded_modulation_and_backpropagates_semantics():
     assert 0.0 < (module.rho * torch.sigmoid(module.non_support_scale)).item() < 0.9
 
 
+def test_lsgm_semantic_responses_match_manuscript_equations():
+    support_probability = torch.tensor([[[[0.25, 0.50, 0.75]]]])
+    non_support_probability = 1.0 - support_probability
+    support_affinity = torch.tensor([[[[0.40, 0.60, 0.90]]]])
+    non_support_affinity = torch.tensor([[[[0.20, 0.40, 0.80]]]])
+
+    support_response, non_support_response = (
+        LandSemanticsGatingModule._semantic_responses(
+            support_probability,
+            non_support_probability,
+            support_affinity,
+            non_support_affinity,
+        )
+    )
+
+    expected_support = support_probability * torch.relu(
+        2.0 * (support_affinity - 0.5)
+    )
+    expected_non_support = non_support_probability * non_support_affinity
+    assert torch.allclose(support_response, expected_support)
+    assert torch.allclose(non_support_response, expected_non_support)
+    # No support promotion below affinity 0.5; both responses are
+    # proportionally weighted by their semantic probability maps.
+    assert support_response[0, 0, 0, 0].item() == 0.0
+    assert torch.isclose(support_response[0, 0, 0, 2], torch.tensor(0.6))
+    assert torch.isclose(non_support_response[0, 0, 0, 0], torch.tensor(0.15))
+
+
 def test_two_task_loss_runs():
     model = LGDNet(num_land_classes=7, decoder_channels=32, pretrained_backbone=False)
     criterion = LGDNetLoss()

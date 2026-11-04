@@ -16,7 +16,7 @@ class LandSemanticsGatingModule(nn.Module):
     the paper:
 
     1. convert land-cover logits to support/non-support probabilities;
-    2. pool damage features into semantic prototypes under detached land masks;
+    2. pool damage features into semantic prototypes using soft land probabilities;
     3. estimate host and non-host affinities;
     4. apply bounded residual modulation to the damage feature map.
 
@@ -80,14 +80,39 @@ class LandSemanticsGatingModule(nn.Module):
 
         tau_support = F.softplus(self.support_temperature_raw) + self.eps
         tau_non_support = F.softplus(self.non_support_temperature_raw) + self.eps
-        support_gate = torch.sigmoid(support_affinity / tau_support)
-        non_support_gate = torch.sigmoid(
+        support_affinity = torch.sigmoid(support_affinity / tau_support)
+        non_support_affinity = torch.sigmoid(
             non_support_affinity / tau_non_support
+        )
+        support_response, non_support_response = self._semantic_responses(
+            support_mask,
+            non_support_mask,
+            support_affinity,
+            non_support_affinity,
         )
         lambda_support = torch.sigmoid(self.support_scale)
         lambda_non_support = self.rho * torch.sigmoid(self.non_support_scale)
-        modulation = 1.0 + lambda_support * support_gate - lambda_non_support * non_support_gate
+        modulation = (
+            1.0
+            + lambda_support * support_response
+            - lambda_non_support * non_support_response
+        )
         return damage_features * modulation
+
+    @staticmethod
+    def _semantic_responses(
+        support_probability: torch.Tensor,
+        non_support_probability: torch.Tensor,
+        support_affinity: torch.Tensor,
+        non_support_affinity: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Apply the manuscript's semantic weighting to the affinity maps."""
+
+        support_response = support_probability * torch.relu(
+            2.0 * (support_affinity - 0.5)
+        )
+        non_support_response = non_support_probability * non_support_affinity
+        return support_response, non_support_response
 
     def _group_probability(self, probabilities: torch.Tensor, class_ids: tuple[int, ...]) -> torch.Tensor:
         valid_ids = [class_id for class_id in class_ids if 0 <= class_id < probabilities.shape[1]]
