@@ -20,7 +20,7 @@
   "total_patches": 6683,
   "zenodo_dataset_version": "1.1",
   "zenodo_dataset_doi": "10.5281/zenodo.23934838",
-  "license_note": "The root MIT license covers code only. Author-created data use CC BY-NC 4.0; Google Earth imagery included in Zenodo is covered by separate author-obtained permission and remains subject to source terms.",
+  "license_note": "The root MIT license covers code only. Author-created data use CC BY-NC 4.0. The authors use Google Earth imagery for non-commercial academic research under applicable Google Earth terms; this statement does not grant others a separate license or permission to reuse those pixels.",
   "split_rows": {
     "train": 5490,
     "validation": 353,

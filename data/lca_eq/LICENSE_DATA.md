@@ -22,11 +22,13 @@ imagery providers.
   Users must obtain any imagery through lawful access and follow Google's
   applicable terms and attribution requirements.
 
-The versioned Zenodo v1.1 archive includes the 183 Yangbi RGB patches under
-separate permission obtained by the authors for that public release. Those
-pixels are not relicensed under CC BY-NC 4.0; further reuse remains subject to
-the permission scope and Google's applicable terms. See the [Zenodo v1.1
-record](https://doi.org/10.5281/zenodo.23934838) for the complete statement.
+The Zenodo v1.1 archive includes 183 Yangbi RGB patches accessed through Google
+Earth historical imagery. The authors' use of these images is for
+non-commercial academic research and follows applicable Google Earth terms and
+attribution requirements. This statement does not grant a separate license or
+permission to redistribute or reuse those pixels. They are not covered by
+CC BY-NC 4.0, and any further use remains subject to Google's applicable terms.
+See the [Zenodo v1.1 record](https://doi.org/10.5281/zenodo.23934838).
 
 The previously published Zenodo v1.0 record uses CC BY 4.0. That record is
 historical; its license does not override third-party image-provider rights.

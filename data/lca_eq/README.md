@@ -44,6 +44,8 @@ See [`LICENSE_DATA.md`](LICENSE_DATA.md). The root repository MIT license
 covers source code, not satellite imagery. Google Earth RGB pixels are not
 redistributed here. Maxar imagery is subject to CC BY-NC 4.0 only where the
 specific source asset is covered by the Maxar Open Data Program license. The
-versioned Zenodo v1.1 release retains the RGB archive, adds the 445 Puerto Rico
-hard-negative masks, and documents Google Earth imagery under the separate
-permission obtained for that public release: [Zenodo v1.1](https://doi.org/10.5281/zenodo.23934838).
+versioned Zenodo v1.1 release retains the RGB archive and adds the 445 Puerto
+Rico hard-negative masks. The authors' use of the 183 Yangbi RGB patches is for
+non-commercial academic research under applicable Google Earth terms; this
+statement does not grant others a separate license or permission to reuse the
+imagery. See [Zenodo v1.1](https://doi.org/10.5281/zenodo.23934838).
