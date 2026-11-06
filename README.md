@@ -27,7 +27,7 @@ python scripts/train.py --config configs/lgdnet_lca_eq.yaml
 python scripts/evaluate_lgdnet.py --config configs/lgdnet_lca_eq.yaml --checkpoint /path/to/checkpoint.ckpt --split test
 ```
 
-The default configuration uses the paper's seven land-cover classes and event-level train/validation/test split. See [`data/lca_eq/README.md`](data/lca_eq/README.md) for dataset files and [`docs/C10_REPRODUCIBILITY.md`](docs/C10_REPRODUCIBILITY.md) for implementation and experiment details.
+The default configuration uses the paper's seven land-cover classes and event-level train/validation/test split. See [`data/lca_eq/README.md`](data/lca_eq/README.md) for dataset information.
 
 ## License
 
